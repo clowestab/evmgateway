@@ -4,7 +4,7 @@ import {
   type AddressLike,
   type JsonRpcProvider,
   //isBytesLike,
-  hexlify,
+  //hexlify,
   //type BytesLike,
 } from 'ethers';
 
@@ -85,7 +85,7 @@ export class L1ProofService implements IProofService<L1ProvableBlock> {
     console.log("BLOCK NUM", blockNo);
     console.log("BLOCK rpcBlock", rpcBlock); //has correct hash
 
-    const blockHeader2 = [
+    const blockHeaderData = [
         rpcBlock.parentHash,
         rpcBlock.sha3Uncles,
         rpcBlock.miner,
@@ -104,53 +104,36 @@ export class L1ProofService implements IProofService<L1ProvableBlock> {
         rpcBlock.baseFeePerGas!
     ];
 
-    console.log("here 1", blockHeader2);
-    const encodedBlockHeader = rlp.encode(blockHeader2);
-    const encodedBlockHeaderString = ("0x" + encodedBlockHeader.toString('hex'));
-    //var arrByte = Uint8Array.from(encodedBlockHeader);
+    //console.log("here 1", blockHeaderData);
+    const encodedBlockHeaderData = rlp.encode(blockHeaderData);
+    const encodedBlockHeaderString = ("0x" + encodedBlockHeaderData.toString('hex'));
 
-    //const blockHash = keccak256(encodedBlockHeader);
+    //This is correct
+    console.log("encodedBlockHeaderString", encodedBlockHeaderString);
 
-    console.log("here 2", encodedBlockHeaderString);
+    const blockHeaderInstance    = new BlockHeader(rpcBlock);
+    const blockHeaderInstanceHex = encodeRlp(blockHeaderInstance.raw());
 
-    const bh = new BlockHeader(rpcBlock);
+    //This is wrong
+    console.log("blockHeaderInstanceHex", blockHeaderInstanceHex);
 
-let bhhex = encodeRlp(bh.raw());
+    const blockInstance = Block.fromRPC(rpcBlock);
+    const blockInstanceHeaderHex = encodeRlp(blockInstance.header.raw());
 
-    console.log("here 2bh", bhhex);
+    console.log("blockInstanceHeaderHex", blockInstanceHeaderHex);
 
-const hexI = Uint8Array.from(Buffer.from(encodedBlockHeaderString, 'hex'));
+    const blockHash1 = keccak256(encodedBlockHeaderString);
+    const blockHash2 = keccak256(blockInstanceHeaderHex);
 
-
-    const block = Block.fromRPC(rpcBlock);
-    const blockHeader = encodeRlp(hexI);
-    const blockHs = keccak256(blockHeader);
-
-
-        console.log("here 3", blockHeader);
-        console.log("here 4", blockHs);
-
-
-        console.log("comp1", bh);
-        console.log("comp2", bh);
-
-        console.log("type1", block.header.raw());
-
-        const k1 = keccak256(encodedBlockHeaderString);
-        const k2 = keccak256(blockHeader);
-
-        console.log("k1", k1);
-        console.log("k2", k2);
-
-
-const hex = hexlify(encodedBlockHeaderString);//Uint8Array.from(Buffer.from(encodedBlockHeaderString, 'hex'));
+    console.log("blockHash1", blockHash1);
+    console.log("blockHash2", blockHash2);
 
     return AbiCoder.defaultAbiCoder().encode(
       [
         'tuple(uint256 blockNo, bytes blockHeader)',
         'tuple(bytes[] stateTrieWitness, bytes[][] storageProofs)',
       ],
-      [[ blockNo, hex ], proof]
+      [[ blockNo, encodedBlockHeaderString ], proof]
     );
 
     //returns 5

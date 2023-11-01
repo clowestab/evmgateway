@@ -29,11 +29,16 @@ const config: HardhatUserConfig = {
       accounts: [DEPLOYER_PRIVATE_KEY],
       deploy: [ "deploy_l1/" ],
       companionNetworks: {
-        l2: "optimismGoerli",
+        l2: "ensChain",
       },
     },
     optimismGoerli: {
       url: "https://goerli.optimism.io",
+      accounts: [DEPLOYER_PRIVATE_KEY],
+      deploy: [ "deploy_l2/" ],
+    },
+    ensChain: {
+      url: "https://chain.enstools.com",
       accounts: [DEPLOYER_PRIVATE_KEY],
       deploy: [ "deploy_l2/" ],
     }

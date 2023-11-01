@@ -22,6 +22,6 @@ if (String(port) !== options.port) throw new Error('Invalid port');
 
 (async () => {
   app.listen(port, function () {
-    console.log(`Listening on ${port}`);
+    console.log(`Listening ons ${port}`);
   });
 })();

@@ -9,11 +9,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await getNamedAccounts();
 
   const OPVerifier = await deployments.get('OPVerifier');
-  const TestL2 = await hre.companionNetworks['l2'].deployments.get('TestL2');
+  const L2PublicResolver = await hre.companionNetworks['l2'].deployments.get('L2PublicResolver');
 
   await deploy('TestL1', {
     from: deployer,
-    args: [OPVerifier.address, TestL2.address],
+    args: [OPVerifier.address, L2PublicResolver.address],
     log: true,
   });
 };

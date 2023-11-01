@@ -6,6 +6,7 @@ const options = {
   },
 };
 
+
 async function main() {
   const server = ganache.server(options);
   console.log('Starting server');
@@ -43,3 +44,6 @@ main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
 });
+
+
+

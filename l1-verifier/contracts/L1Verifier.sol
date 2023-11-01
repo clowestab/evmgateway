@@ -5,9 +5,6 @@ import { IEVMVerifier } from "@ensdomains/evm-verifier/contracts/IEVMVerifier.so
 import { RLPReader } from "@eth-optimism/contracts-bedrock/src/libraries/rlp/RLPReader.sol";
 import { StateProof, EVMProofHelper } from "@ensdomains/evm-verifier/contracts/EVMProofHelper.sol";
 
-import "hardhat/console.sol";
-
-
 struct L1WitnessData {
     uint256 blockNo;
     bytes blockHeader;
@@ -28,19 +25,6 @@ contract L1Verifier is IEVMVerifier {
 
     function getStorageValues(address target, bytes32[] memory commands, bytes[] memory constants, bytes memory proof) external view returns(bytes[] memory values) {
         (L1WitnessData memory l1Data, StateProof memory stateProof) = abi.decode(proof, (L1WitnessData, StateProof));
-
-        console.log("L1 DATA blockNo", l1Data.blockNo);
-
-        console.log("L1 DATA blockHeader");
-        console.logBytes(l1Data.blockHeader);
-
-        console.log("CALCULATED blockhash");
-        console.logBytes32(blockhash(l1Data.blockNo));
-
-        console.log("keccak256 blockHeader");
-        console.logBytes32(keccak256(l1Data.blockHeader));
-        //console.log("stateProof", stateProof);
-
         if(keccak256(l1Data.blockHeader) != blockhash(l1Data.blockNo)) {
             revert BlockHeaderHashMismatch(block.number, l1Data.blockNo, blockhash(l1Data.blockNo), keccak256(l1Data.blockHeader));
         }
