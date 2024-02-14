@@ -12,7 +12,7 @@ abstract contract EVMFetchTarget {
     using Address for address;
 
     error ResponseLengthMismatch(uint256 actual, uint256 expected);
-
+error Oops(uint8);
     /**
      * @dev Internal callback function invoked by CCIP-Read in response to a `getStorageSlots` request.
      */
@@ -21,10 +21,14 @@ abstract contract EVMFetchTarget {
         (IEVMVerifier verifier, address addr, bytes32[] memory commands, bytes[] memory constants, bytes4 callback, bytes memory callbackData) =
             abi.decode(extradata, (IEVMVerifier, address, bytes32[], bytes[], bytes4, bytes));
         bytes[] memory values = verifier.getStorageValues(addr, commands, constants, proof);
+
         if(values.length != commands.length) {
             revert ResponseLengthMismatch(values.length, commands.length);
         }
         bytes memory ret = address(this).functionCall(abi.encodeWithSelector(callback, values, callbackData));
+        
+                                            //revert Oops(uint8(5));
+
         assembly {
             return(add(ret, 32), mload(ret))
         }

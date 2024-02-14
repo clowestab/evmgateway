@@ -48,7 +48,11 @@ export class L1ProofService implements IProofService<L1ProvableBlock> {
     address: AddressLike,
     slot: bigint
   ): Promise<string> {
-    return this.helper.getStorageAt(block, address, slot);
+    const sto= this.helper.getStorageAt(block, address, slot);
+
+    console.log("STO", sto);
+
+    return sto;
   }
 
   /**

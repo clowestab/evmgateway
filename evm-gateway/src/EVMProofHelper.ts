@@ -46,6 +46,7 @@ export class EVMProofHelper {
     address: AddressLike,
     slot: bigint
   ): Promise<string> {
+
     return this.provider.getStorage(address, slot, blockNo);
   }
 

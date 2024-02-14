@@ -115,4 +115,30 @@ contract TestL1 is EVMFetchTarget {
     function getZeroIndexCallback(bytes[] memory values, bytes memory) public pure returns(uint256) {
         return abi.decode(values[1], (uint256));
     }
+
+
+    function getHighscorerFromRefSlice() public view returns(string memory) {
+        EVMFetcher.newFetchRequest(verifier, target)
+            .getStatic(6)
+            .getDynamic(3)
+                .refSlice(0, 2, 1)
+            .fetch(this.getHighscorerFromRefSliceCallback.selector, "");
+    }
+
+    function getHighscorerFromRefSliceCallback(bytes[] memory values, bytes memory) public pure returns(string memory) {
+        return string(values[1]);
+    }
+
+
+    function getAddressFromRefSlice() public view returns(string memory) {
+        EVMFetcher.newFetchRequest(verifier, target)
+            .getStatic(7)
+            .getDynamic(8)
+                .refSlice(0, 8, 20)
+            .fetch(this.getAddressFromRefSliceCallback.selector, "");
+    }
+
+    function getAddressFromRefSliceCallback(bytes[] memory values, bytes memory) public pure returns(string memory) {
+        return string(values[1]);
+    }
 }

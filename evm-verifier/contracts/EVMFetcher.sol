@@ -12,7 +12,12 @@ interface IEVMGateway {
 uint8 constant FLAG_DYNAMIC = 0x01;
 uint8 constant OP_CONSTANT = 0x00;
 uint8 constant OP_BACKREF = 0x20;
+uint8 constant OP_SLICE = 0x40;
+uint8 constant OP_SETADDR = 0x60;
 uint8 constant OP_END = 0xff;
+
+
+//80, a0, c0, e0
 
 /**
  * @dev A library to facilitate requesting storage data proofs from contracts, possibly on a different chain.
@@ -108,6 +113,8 @@ library EVMFetcher {
         return request;
     }
 
+
+
     /**
      * @dev Adds a `uint256` element to the current path.
      * @param request The request object being operated on.
@@ -179,6 +186,31 @@ library EVMFetcher {
      * @param idx The index of the previous fetch request, starting at 0.
      */
     function ref(EVMFetchRequest memory request, uint8 idx) internal pure returns (EVMFetchRequest memory) {
+        if(request.operationIdx >= 32) {
+            revert CommandTooLong();
+        }
+        if(idx > request.commands.length || idx > 31) {
+            revert InvalidReference(idx, request.commands.length);
+        }
+        _addOperation(request, OP_BACKREF | idx);
+        return request;
+    }
+
+
+    function refSlice(EVMFetchRequest memory request, uint8 idx, uint8 offset, uint8 length) internal pure returns (EVMFetchRequest memory) {
+        if(request.operationIdx >= 32) {
+            revert CommandTooLong();
+        }
+        if(idx > request.commands.length || idx > 31) {
+            revert InvalidReference(idx, request.commands.length);
+        }
+        _addOperation(request, OP_SLICE | _addConstant(request, abi.encodePacked(offset, length)));
+        return request;
+    }
+
+
+
+    function setAddr(EVMFetchRequest memory request, uint8 idx) internal pure returns (EVMFetchRequest memory) {
         if(request.operationIdx >= 32) {
             revert CommandTooLong();
         }

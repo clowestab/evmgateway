@@ -7,12 +7,15 @@ import {
   solidityPackedKeccak256,
   toBigInt,
   zeroPadValue,
+  hexlify
 } from 'ethers';
 
 import type { IProofService, ProvableBlock } from './IProofService.js';
 
 const OP_CONSTANT = 0x00;
 const OP_BACKREF = 0x20;
+const OP_SLICE = 0x40;
+const OP_SETADDR = 0x60;
 
 export enum StorageLayout {
   /**
@@ -77,6 +80,8 @@ export class EVMGateway<T extends ProvableBlock> {
        * 5 bits are the operand. The following opcodes are defined:
        *  - 0x00 - `push(constants[operand])`
        *  - 0x20 - `push(values[operand])`
+       *  - 0x30 - `slice20(16, 20)` - 
+       *  - 0x40 - `setaddr()` - pops the top stack element and uses it as the address for subsequent fetches
        *  - 0x70 - `halt` - do not process any further instructions for this command.
        *
        * After a `halt` is reached or the end of the command word is reached, the elements on the stack
@@ -157,9 +162,37 @@ export class EVMGateway<T extends ProvableBlock> {
       case OP_CONSTANT:
         return constants[operand];
       case OP_BACKREF:
+        const backref = await (await requests[operand]).value();
+
+        console.log("backref", backref);
+
+        return backref;
+
+      //Returns sliced data from the previous requests value and uses it as an index
+      case OP_SLICE:
+
+      console.log("operandconst", constants[operand]);
+      
+        const [offset, length] = getBytes(constants[operand])
+        const value = await (await requests[requests.length - 1]).value();
+
+        console.log("vallllu", value);
+
+        const parsedValue = hexlify(getBytes(value).slice(offset, offset + length));
+
+        //console.log("PARSED", parsedValue);
+
+        const paddedParsed = zeroPadValue(parsedValue, 32);
+
+        console.log("paddedParsed", paddedParsed);
+
+        return paddedParsed;
+
+      case OP_SETADDR:
         return await (await requests[operand]).value();
+
       default:
-        throw new Error('Unrecognized opcode');
+        throw new Error('Unrecognized opcodse ' + opcode);
     }
   }
 
@@ -187,6 +220,8 @@ export class EVMGateway<T extends ProvableBlock> {
         solidityPackedKeccak256(['bytes', 'uint256'], [index, slot])
       );
     }
+
+    console.log("SLOT", slot);
 
     return { slot, isDynamic };
   }
@@ -247,11 +282,17 @@ export class EVMGateway<T extends ProvableBlock> {
       return {
         slots: [slot],
         isDynamic,
-        value: memoize(async () =>
-          zeroPadValue(
-            await this.proofService.getStorageAt(block, address, slot),
+        value: memoize(async () => {
+
+          const val = await this.proofService.getStorageAt(block, address, slot);
+
+          console.log("VAL", val);
+          
+          return zeroPadValue(
+            val,
             32
           )
+        }
         ),
       };
     } else {

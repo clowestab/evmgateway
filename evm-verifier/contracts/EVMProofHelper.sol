@@ -5,6 +5,9 @@ import {RLPReader} from "@eth-optimism/contracts-bedrock/src/libraries/rlp/RLPRe
 import {Bytes} from "@eth-optimism/contracts-bedrock/src/libraries/Bytes.sol";
 import {SecureMerkleTrie} from "./SecureMerkleTrie.sol";
 
+import "@ganache/console.log/console.sol";
+
+
 struct StateProof {
     bytes[] stateTrieWitness;         // Witness proving the `storageRoot` against a state root.
     bytes[][] storageProofs;          // An array of proofs of individual storage elements 
@@ -12,10 +15,14 @@ struct StateProof {
 
 uint8 constant OP_CONSTANT = 0x00;
 uint8 constant OP_BACKREF = 0x20;
+uint8 constant OP_SLICE = 0x40;
 uint8 constant FLAG_DYNAMIC = 0x01;
 
 library EVMProofHelper {
     using Bytes for bytes;
+
+    error Problem(bytes);
+    error Oops(uint8);
 
     error AccountNotFound(address);
     error UnknownOpcode(uint8);
@@ -77,6 +84,42 @@ library EVMProofHelper {
             return constants[operand];
         } else if(opcode == OP_BACKREF) {
             return values[operand];
+        } else if(opcode == OP_SLICE) {
+
+            //const [offset, length] = getBytes(constants[operand])
+
+            uint8 offset = uint8(bytes1(constants[operand].slice(0, 1)));
+            uint8 length = uint8(bytes1(constants[operand].slice(1, 1)));
+
+            //const value = await (await requests[requests.length - 1]).value();
+
+            bytes memory parsedValue = values[values.length - 2].slice(offset, length);
+
+            //pads to 32 bytes
+            //return address(uint160(bytes20(parsedValue)));
+            
+            bytes32 ist;
+
+            //bytes32 hmm = bytes12(parsedValue<<160);
+
+            assembly {
+                ist := mload(add(parsedValue, 32))
+                //ist := shr(ist, 8)
+            }
+
+            bytes32 la = ist >> (256 - (8 * parsedValue.length));
+
+            //bytes memory ans = bytes(ist);
+
+            //bytes memory alt = abi.encodePacked(la);
+
+            //revert Problem(abi.encodePacked(la));
+
+
+            return abi.encodePacked(la);
+
+
+
         } else {
             revert UnknownOpcode(opcode);
         }
@@ -89,7 +132,6 @@ library EVMProofHelper {
         bytes memory slotData = executeOperation(command[1], constants, values);
         require(slotData.length == 32, "First path element must be 32 bytes");
         slot = uint256(bytes32(slotData));
-
         for(uint256 j = 2; j < 32 && command[j] != 0xff; j++) {
             bytes memory index = executeOperation(command[j], constants, values);
             slot = uint256(keccak256(abi.encodePacked(index, slot)));
@@ -138,5 +180,6 @@ library EVMProofHelper {
                 (values[i], proofIdx) = getDynamicValue(storageRoot, slot, proof, proofIdx);
             }
         }
+
     }
 }
