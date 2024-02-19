@@ -81,6 +81,8 @@ library EVMProofHelper {
         uint8 operand = uint8(operation) & 0x1f;
 
         if(opcode == OP_CONSTANT) {
+
+            //revert Problem(constants[operand]);
             return constants[operand];
         } else if(opcode == OP_BACKREF) {
             return values[operand];
@@ -116,7 +118,11 @@ library EVMProofHelper {
             //revert Problem(abi.encodePacked(la));
 
 
+            //"for strings and byte arrays, h(k) is just the unpadded data."
+            //return abi.encodePacked(parsedValue);
+            //otherwise
             return abi.encodePacked(la);
+
 
 
 
@@ -128,6 +134,8 @@ library EVMProofHelper {
     function computeFirstSlot(bytes32 command, bytes[] memory constants, bytes[] memory values) private pure returns(bool isDynamic, uint256 slot) {
         uint8 flags = uint8(command[0]);
         isDynamic = (flags & FLAG_DYNAMIC) != 0;
+
+            revert Problem(constants[operand]);
 
         bytes memory slotData = executeOperation(command[1], constants, values);
         require(slotData.length == 32, "First path element must be 32 bytes");

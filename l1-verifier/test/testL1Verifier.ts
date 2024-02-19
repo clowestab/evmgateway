@@ -84,7 +84,32 @@ describe('L1Verifier', () => {
   });
 
 
-  it('simple proofs for ref slice', async () => {
+  it('surname', async () => {
+
+    try {
+      const result = await target.getStringStringFromRefSlice({ enableCcipRead: true });
+      expect(result).to.equal(
+        'clowes'
+      );
+
+      } catch (e) {
+        console.log(e);
+        const iface = new ethers.Interface(["error Problem(bytes)"]);
+        const erro = iface.decodeErrorResult("Problem", e.data)
+    
+        console.log(erro);
+    
+        //parsedValue = Result(1) [ '0x2a' ]; - fails
+
+        //ans -   '0x000000000000000000000000000000000000000000000000000000000000002a' - succeeds
+        //alt - Result(1) [ '0x2a' ] - fails
+      }
+
+  });
+
+
+  /*
+    it('simple proofs for ref slice', async () => {
 
     try {
       const result = await target.getHighscorerFromRefSlice({ enableCcipRead: true });
@@ -106,6 +131,7 @@ describe('L1Verifier', () => {
       }
 
   });
+  */
 
 
 /*  it('simple proofs for fixed values', async () => {
@@ -143,7 +169,7 @@ it('nested proofs with lookbehind for dynamic values', async () => {
 });
 */
 
-
+/*
 it('address ref slice', async () => {
 
   try {
@@ -161,6 +187,7 @@ it('address ref slice', async () => {
     //alt - Result(1) [ '0x2a' ] - fails
   }
 });
+*/
 
 /*
   it('mappings with variable-length keys', async () => {

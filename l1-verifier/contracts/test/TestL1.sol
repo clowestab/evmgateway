@@ -141,4 +141,17 @@ contract TestL1 is EVMFetchTarget {
     function getAddressFromRefSliceCallback(bytes[] memory values, bytes memory) public pure returns(string memory) {
         return string(values[1]);
     }
+
+
+    function getStringStringFromRefSlice() public view returns(string memory) {
+        EVMFetcher.newFetchRequest(verifier, target)
+            .getDynamic(9)
+            .getDynamic(10)
+                .element(string("tom"))
+            .fetch(this.getStringStringFromRefSliceCallback.selector, "");
+    }
+
+    function getStringStringFromRefSliceCallback(bytes[] memory values, bytes memory) public pure returns(string memory) {
+        return string(values[1]);
+    }
 }
