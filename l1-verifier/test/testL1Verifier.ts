@@ -69,22 +69,57 @@ describe('L1Verifier', () => {
       'L1Verifier',
       signer
     );
-    verifier = await l1VerifierFactory.deploy(['test:']);
+    verifier = await l1VerifierFactory.deploy(["http://localhost:8080/{sender}/{data}.json"]);
+
 
     const testL2Factory = await ethers.getContractFactory('TestL2', signer);
     const l2contract = await testL2Factory.deploy();
 
-    const testL1Factory = await ethers.getContractFactory('TestL1', signer);
+      const anotherTestL2Factory = await ethers.getContractFactory('SlotDataContract', signer);
+      const anotherL2contract = await anotherTestL2Factory.deploy();
+      const anotherL2contractAddress = await anotherL2contract.getAddress();
+
+      console.log("address", anotherL2contractAddress);
+
+    const testL1Factory = await ethers.getContractFactory('SlotExamples', signer);
     target = await testL1Factory.deploy(
       await verifier.getAddress(),
-      await l2contract.getAddress()
+      await anotherL2contractAddress
     );
     // Mine an empty block so we have something to prove against
     await provider.send('evm_mine', []);
   });
 
 
-  it('surname', async () => {
+
+  it('set addr', async () => {
+
+    try {
+
+      const result = await target.getLatestFromTwo("0x95222290dd7278aa3ddd389cc1e1d165cc4bafe5", { enableCcipRead: true });
+      expect(result).to.equal(
+        'clowes'
+      );
+
+      } catch (e) {
+        
+        console.log(e);
+        //const iface = new ethers.Interface(["error Problem(bytes)"]);
+        //const erro = iface.decodeErrorResult("Problem", e.data)
+    
+        //console.log(erro);
+    
+        //parsedValue = Result(1) [ '0x2a' ]; - fails
+
+        //ans -   '0x000000000000000000000000000000000000000000000000000000000000002a' - succeeds
+        //alt - Result(1) [ '0x2a' ] - fails
+      }
+
+  });
+
+
+
+ /* it('surname', async () => {
 
     try {
       const result = await target.getStringStringFromRefSlice({ enableCcipRead: true });
@@ -105,7 +140,7 @@ describe('L1Verifier', () => {
         //alt - Result(1) [ '0x2a' ] - fails
       }
 
-  });
+  });*/
 
 
   /*

@@ -7,7 +7,8 @@ import {
   solidityPackedKeccak256,
   toBigInt,
   zeroPadValue,
-  hexlify
+  hexlify,
+  //AbiCoder,
 } from 'ethers';
 
 import type { IProofService, ProvableBlock } from './IProofService.js';
@@ -15,7 +16,7 @@ import type { IProofService, ProvableBlock } from './IProofService.js';
 const OP_CONSTANT = 0x00;
 const OP_BACKREF = 0x20;
 const OP_SLICE = 0x40;
-const OP_SETADDR = 0x60;
+//const OP_SETADDR = 0x60;
 
 export enum StorageLayout {
   /**
@@ -80,8 +81,8 @@ export class EVMGateway<T extends ProvableBlock> {
        * 5 bits are the operand. The following opcodes are defined:
        *  - 0x00 - `push(constants[operand])`
        *  - 0x20 - `push(values[operand])`
-       *  - 0x30 - `slice20(16, 20)` - 
-       *  - 0x40 - `setaddr()` - pops the top stack element and uses it as the address for subsequent fetches
+       *  - 0x40 - `slice20(16, 20)` - 
+       *  - 0x60 - `setaddr()` - pops the top stack element and uses it as the address for subsequent fetches
        *  - 0x70 - `halt` - do not process any further instructions for this command.
        *
        * After a `halt` is reached or the end of the command word is reached, the elements on the stack
@@ -96,16 +97,24 @@ export class EVMGateway<T extends ProvableBlock> {
        * The final result of this hashing operation is used as the base slot number for the storage
        * lookup. This mirrors Solidity's recursive hashing operation for determining storage slot locations.
        */
-      'function getStorageSlots(address addr, bytes32[] memory commands, bytes[] memory constants) external view returns(bytes memory witness)',
+      'function getStorageSlots(address[] calldata targets, bytes32[] memory commands, bytes[] memory constants) external view returns(bytes[] memory witnesses)',
     ];
     server.add(abi, [
       {
         type: 'getStorageSlots',
         func: async (args) => {
           try {
-            const [addr, commands, constants] = args;
-            const proofs = await this.createProofs(addr, commands, constants);
-            return [proofs];
+            const [targets, commands, constants] = args;
+
+            //Returns a hexadecimal encoded bytes[] of concatanated proofs
+            const concatanatedProofs = await this.createProofs(targets, commands, constants);
+
+            //console.log("concatanatedProofs", concatanatedProofs);
+
+            //Handler wants an array of promises
+            //return an array of proofs which the ccip-read-server will encode as the return type from the abi (bytes[])
+            return [concatanatedProofs];
+
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } catch (e: any) {
             console.log(e.stack);
@@ -124,30 +133,95 @@ export class EVMGateway<T extends ProvableBlock> {
    *              See README.md for details of the encoding.
    */
   async createProofs(
-    address: string,
+    targets: string[],
     commands: string[],
     constants: string[]
-  ): Promise<string> {
+  ): Promise<string[]> {
     const block = await this.proofService.getProvableBlock();
-    const requests: Promise<StorageElement>[] = [];
+    const allRequests: Promise<StorageElement>[] = [];
+    const requestsMap: {[key: string]: Promise<StorageElement>[]} = {};
     // For each request, spawn a promise to compute the set of slots required
     for (let i = 0; i < commands.length; i++) {
-      requests.push(
+
+      const command = commands[i];
+      const commandWord = getBytes(command);
+      const targetIndex = commandWord[0];
+
+      console.log("targetIndex", targetIndex);
+      console.log("targets", targets);
+      const target = targets[targetIndex];
+
+
+      console.log("target111", target);
+
+      //00000001
+      //const hasStaticTarget = (targetFlag & 0xFF) != 0;
+      var targetToUse = target;
+
+      const targetAsInt = BigInt(target);
+
+      if (targetAsInt <= 256) {
+
+        targetToUse = await (await allRequests[parseInt(targetAsInt.toString())]).value();
+      }
+
+      !(targetToUse in requestsMap) && (requestsMap[targetToUse] = [])
+
+      requestsMap[targetToUse].push(
         this.getValueFromPath(
           block,
-          address,
-          commands[i],
+          targetToUse,
+          command,
           constants,
-          requests.slice()
+          allRequests.slice()
         )
       );
     }
-    // Resolve all the outstanding requests
-    const results = await Promise.all(requests);
-    const slots = Array.prototype.concat(
-      ...results.map((result) => result.slots)
+
+    console.log("here1");
+
+    const resolvedTargets = Object.keys(requestsMap);
+
+    console.log("resolvedTargets", resolvedTargets);
+
+    const proofArray = resolvedTargets.map(async (targetAddress) => {
+      // Resolve all the outstanding requests
+      const results = await Promise.all(requestsMap[targetAddress]);
+      const slots = Array.prototype.concat(
+        ...results.map((result) => result.slots)
+      );
+      return this.proofService.getProofs(block, targetAddress, slots);
+    });
+
+    /*
+    //Proof service returns 
+
+            return AbiCoder.defaultAbiCoder().encode([
+            'tuple(uint256 blockNo, bytes blockHeader)',
+            'tuple(bytes[] stateTrieWitness, bytes[][] storageProofs)',
+        ], [{ blockNo, blockHeader }, proof]);
+
+    */
+
+    const res = await Promise.all(proofArray);
+    console.log("lil", res);
+
+    return res;
+
+    /*const resA = AbiCoder.defaultAbiCoder().encode(
+      [
+        'bytes[]',
+      ],
+      [res]
     );
-    return this.proofService.getProofs(block, address, slots);
+
+    console.log("lilA", resA);
+
+    return resA;*/
+    
+    //console.log("proofArray", proofArray);
+
+    //return proofArray;
   }
 
   private async executeOperation(
@@ -188,9 +262,6 @@ export class EVMGateway<T extends ProvableBlock> {
 
         return paddedParsed;
 
-      case OP_SETADDR:
-        return await (await requests[operand]).value();
-
       default:
         throw new Error('Unrecognized opcodse ' + opcode);
     }
@@ -202,11 +273,11 @@ export class EVMGateway<T extends ProvableBlock> {
     requests: Promise<StorageElement>[]
   ): Promise<{ slot: bigint; isDynamic: boolean }> {
     const commandWord = getBytes(command);
-    const flags = commandWord[0];
+    const flags = commandWord[1];
     const isDynamic = (flags & 0x01) != 0;
 
     let slot = toBigInt(
-      await this.executeOperation(commandWord[1], constants, requests)
+      await this.executeOperation(commandWord[2], constants, requests)
     );
 
     // If there are multiple path elements, recursively hash them solidity-style to get the final slot.
@@ -267,36 +338,41 @@ export class EVMGateway<T extends ProvableBlock> {
 
   private async getValueFromPath(
     block: T,
-    address: string,
+    target: string,
     command: string,
     constants: string[],
     requests: Promise<StorageElement>[]
   ): Promise<StorageElement> {
+
     const { slot, isDynamic } = await this.computeFirstSlot(
       command,
       constants,
       requests
     );
 
+    var storageElement = null;
+
     if (!isDynamic) {
-      return {
+      storageElement = {
         slots: [slot],
         isDynamic,
         value: memoize(async () => {
 
-          const val = await this.proofService.getStorageAt(block, address, slot);
+          const storageValue = await this.proofService.getStorageAt(block, target, slot);
 
-          console.log("VAL", val);
+          console.log("storageValue", storageValue);
           
           return zeroPadValue(
-            val,
+            storageValue,
             32
           )
         }
         ),
       };
     } else {
-      return this.getDynamicValue(block, address, slot);
+      storageElement = this.getDynamicValue(block, target, slot);
     }
+
+    return storageElement;
   }
 }

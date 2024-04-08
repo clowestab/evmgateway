@@ -6,7 +6,7 @@ import { EVMFetchTarget } from './EVMFetchTarget.sol';
 import { Address } from '@openzeppelin/contracts/utils/Address.sol';
 
 interface IEVMGateway {
-    function getStorageSlots(address addr, bytes32[] memory commands, bytes[] memory constants) external pure returns(bytes memory witness);
+    function getStorageSlots(address[] calldata targets, bytes32[] memory commands, bytes[] memory constants) external pure returns(bytes memory witness);
 }
 
 uint8 constant FLAG_DYNAMIC = 0x01;
@@ -36,7 +36,8 @@ library EVMFetcher {
 
     struct EVMFetchRequest {
         IEVMVerifier verifier;
-        address target;
+        uint8 currentTargetIndex;
+        address[] targets;
         bytes32[] commands;
         uint256 operationIdx;
         bytes[] constants;
@@ -52,12 +53,16 @@ library EVMFetcher {
     function newFetchRequest(IEVMVerifier verifier, address target) internal pure returns (EVMFetchRequest memory) {
         bytes32[] memory commands = new bytes32[](MAX_COMMANDS);
         bytes[] memory constants = new bytes[](MAX_CONSTANTS);
+        address[] memory targets = new address[](MAX_COMMANDS);
         assembly {
             mstore(commands, 0) // Set current array length to 0
             mstore(constants, 0)
+            mstore(targets, 1)
         }        
-        return EVMFetchRequest(verifier, target, commands, 0, constants);
+        targets[0] = target;
+        return EVMFetchRequest(verifier, 0, targets, commands, 0, constants);
     }
+
 
     /**
      * @dev Starts describing a new fetch request.
@@ -80,7 +85,9 @@ library EVMFetcher {
         if(request.commands.length > MAX_COMMANDS) {
             revert TooManyCommands(MAX_COMMANDS);
         }
+
         request.operationIdx = 0;
+        _addOperation(request, request.currentTargetIndex);
         _addOperation(request, 0);
         _addOperation(request, _addConstant(request, abi.encode(baseSlot)));
         return request;
@@ -107,7 +114,9 @@ library EVMFetcher {
         if(request.commands.length > MAX_COMMANDS) {
             revert TooManyCommands(MAX_COMMANDS);
         }
+
         request.operationIdx = 0;
+        _addOperation(request, request.currentTargetIndex);
         _addOperation(request, FLAG_DYNAMIC);
         _addOperation(request, _addConstant(request, abi.encode(baseSlot)));
         return request;
@@ -210,15 +219,28 @@ library EVMFetcher {
 
 
 
-    function setAddr(EVMFetchRequest memory request, uint8 idx) internal pure returns (EVMFetchRequest memory) {
-        if(request.operationIdx >= 32) {
-            revert CommandTooLong();
+    function setTarget(EVMFetchRequest memory request, address newTarget) internal pure returns (EVMFetchRequest memory) {
+        
+        address[] memory targets = request.targets;
+
+        //add the address to our request targets array
+        uint8 targetIdx = uint8(targets.length);
+        assembly {
+            mstore(targets, add(targetIdx, 1)) // Increment targets array length
         }
-        if(idx > request.commands.length || idx > 31) {
-            revert InvalidReference(idx, request.commands.length);
-        }
-        _addOperation(request, OP_BACKREF | idx);
+        targets[targetIdx] = newTarget;
+
+        request.currentTargetIndex = targetIdx;
+
         return request;
+    }
+
+
+    function setTargetRef(EVMFetchRequest memory request, uint8 idx) internal pure returns (EVMFetchRequest memory) {
+        
+        address fakeAddress = address(uint160(bytes20(bytes1(idx)) >> (152)));
+
+        return setTarget(request, fakeAddress);
     }
 
     /**
@@ -238,9 +260,9 @@ library EVMFetcher {
         revert OffchainLookup(
             address(this),
             request.verifier.gatewayURLs(),
-            abi.encodeCall(IEVMGateway.getStorageSlots, (request.target, request.commands, request.constants)),
+            abi.encodeCall(IEVMGateway.getStorageSlots, (request.targets, request.commands, request.constants)),
             EVMFetchTarget.getStorageSlotsCallback.selector,
-            abi.encode(request.verifier, request.target, request.commands, request.constants, callbackId, callbackData)
+            abi.encode(request.verifier, request.targets, request.commands, request.constants, callbackId, callbackData)
         );
     }
 

@@ -23,6 +23,7 @@ library EVMProofHelper {
 
     error Problem(bytes);
     error Oops(uint8);
+    error Oops2(uint256);
 
     error AccountNotFound(address);
     error UnknownOpcode(uint8);
@@ -56,15 +57,26 @@ library EVMProofHelper {
      * @return The retrieved storage proof value or 0x if the storage slot is empty
      */
     function getSingleStorageProof(bytes32 storageRoot, uint256 slot, bytes[] memory witness) private pure returns (bytes memory) {
+        
+        //revert Oops2(slot);
+        //revert Problem(witness);
+
         (bool exists, bytes memory retrievedValue) = SecureMerkleTrie.get(
             abi.encodePacked(slot),
             witness,
             storageRoot
         );
         if(!exists) {
+
+            //revert Oops(uint8(1));
             // Nonexistent values are treated as zero.
             return "";
         }
+
+        bytes memory asBytes = abi.encodePacked(hex"000000000000000000000000c9f7e9e42b17744b72c5b07b6c38128c8fd6447a");
+
+        //revert Problem(asBytes);
+        
         return RLPReader.readBytes(retrievedValue);
     }
 
@@ -76,11 +88,13 @@ library EVMProofHelper {
         return bytes32(value) >> (256 - 8 * value.length);
     }
 
-    function executeOperation(bytes1 operation, bytes[] memory constants, bytes[] memory values) private pure returns(bytes memory) {
+    function executeOperation(bytes1 operation, bytes[] memory constants, bytes[] memory values) private view returns(bytes memory) {
         uint8 opcode = uint8(operation) & 0xe0;
         uint8 operand = uint8(operation) & 0x1f;
 
         if(opcode == OP_CONSTANT) {
+
+            console.log("CONSTANT");
 
             //revert Problem(constants[operand]);
             return constants[operand];
@@ -131,16 +145,21 @@ library EVMProofHelper {
         }
     }
 
-    function computeFirstSlot(bytes32 command, bytes[] memory constants, bytes[] memory values) private pure returns(bool isDynamic, uint256 slot) {
-        uint8 flags = uint8(command[0]);
+    function computeFirstSlot(bytes32 command, bytes[] memory constants, bytes[] memory values) private view returns(bool isDynamic, uint256 slot) {
+        uint8 flags = uint8(command[1]);
+        //revert Oops(flags);
         isDynamic = (flags & FLAG_DYNAMIC) != 0;
 
-            revert Problem(constants[operand]);
+            //revert Problem(constants[operand]);
 
-        bytes memory slotData = executeOperation(command[1], constants, values);
+        bytes memory slotData = executeOperation(command[2], constants, values);
+
+        console.log("slotData");
+        console.logBytes(slotData);
+
         require(slotData.length == 32, "First path element must be 32 bytes");
         slot = uint256(bytes32(slotData));
-        for(uint256 j = 2; j < 32 && command[j] != 0xff; j++) {
+        for(uint256 j = 3; j < 32 && command[j] != 0xff; j++) {
             bytes memory index = executeOperation(command[j], constants, values);
             slot = uint256(keccak256(abi.encodePacked(index, slot)));
         }
@@ -172,22 +191,47 @@ library EVMProofHelper {
         }
     }
 
-    function getStorageValues(address target, bytes32[] memory commands, bytes[] memory constants, bytes32 stateRoot, StateProof memory proof) internal pure returns(bytes[] memory values) {
+    function getStorageValues(address target, bytes32[] memory commands, uint8 cIdx, bytes[] memory constants, bytes32 stateRoot, StateProof memory proof) internal view returns(bytes[] memory values, uint8 nextCIdx) {
         bytes32 storageRoot = getStorageRoot(stateRoot, target, proof.stateTrieWitness);
         uint256 proofIdx = 0;
         values = new bytes[](commands.length);
-        for(uint256 i = 0; i < commands.length; i++) {
+
+        console.log("commands length");
+        console.log(commands.length);
+
+        for(uint8 i = cIdx; i < commands.length; i++) {
             bytes32 command = commands[i];
+
+            console.log("thisCommand");
+            console.logBytes32(command);
+
             (bool isDynamic, uint256 slot) = computeFirstSlot(command, constants, values);
             if(!isDynamic) {
+
+                console.log("storageRoot");
+                console.logBytes32(storageRoot);
+
+                console.log("slot");
+                console.log(slot);
+
+                console.log("prooooof");
+                console.log(proof.storageProofs[0].length);
+                console.logBytes(proof.storageProofs[0][0]);
+                //console.logBytes(proof.storageProofs[0][1]);
+
                 values[i] = abi.encode(getFixedValue(storageRoot, slot, proof.storageProofs[proofIdx++]));
+
+                console.log("value");
+                console.logBytes(values[i]);
+
+                //revert Problem(values[i]);
                 if(values[i].length > 32) {
                     revert InvalidSlotSize(values[i].length);
                 }
             } else {
                 (values[i], proofIdx) = getDynamicValue(storageRoot, slot, proof, proofIdx);
             }
+            nextCIdx = i;
         }
-
     }
 }

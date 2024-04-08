@@ -60,18 +60,26 @@ export class EVMProofHelper {
    */
   async getProofs(
     blockNo: number,
-    address: AddressLike,
+    target: AddressLike,
     slots: bigint[]
   ): Promise<StateProof> {
     const args = [
-      address,
+      target,
       slots.map((slot) => toBeHex(slot, 32)),
       '0x' + blockNo.toString(16),
     ];
+
+    console.log("Args", args);
+
+    console.log("provider", this.provider);
+
     const proofs: EthGetProofResponse = await this.provider.send(
       'eth_getProof',
       args
     );
+
+    console.log("lol");
+
     return {
       stateTrieWitness: proofs.accountProof,
       storageProofs: proofs.storageProof.map((proof) => proof.proof),

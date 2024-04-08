@@ -154,4 +154,21 @@ contract TestL1 is EVMFetchTarget {
     function getStringStringFromRefSliceCallback(bytes[] memory values, bytes memory) public pure returns(string memory) {
         return string(values[1]);
     }
+
+
+
+    function getLatestFromTwo(address secondTarget) public view returns(bytes[][] memory) {
+        EVMFetcher.newFetchRequest(verifier, target)
+            .getStatic(0)
+            //.setTarget(secondTarget)
+            //.getStatic(0)
+            .fetch(this.getLatestFromTwoCallback.selector, "");
+    }
+
+    function getLatestFromTwoCallback(bytes[][] memory values, bytes memory) public pure returns(bytes[][] memory) {
+        
+        //return (abi.decode(values[0][0], (uint256)), abi.decode(values[0][0], (uint256)));
+
+        return values;
+    }
 }
