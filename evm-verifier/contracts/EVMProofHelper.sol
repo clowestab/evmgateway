@@ -56,10 +56,13 @@ library EVMProofHelper {
      * @param witness the StorageProof struct containing the necessary proof data
      * @return The retrieved storage proof value or 0x if the storage slot is empty
      */
-    function getSingleStorageProof(bytes32 storageRoot, uint256 slot, bytes[] memory witness) private pure returns (bytes memory) {
+    function getSingleStorageProof(bytes32 storageRoot, uint256 slot, bytes[] memory witness) private view returns (bytes memory) {
         
         //revert Oops2(slot);
         //revert Problem(witness);
+
+        console.log("slut");
+        console.log(slot);
 
         (bool exists, bytes memory retrievedValue) = SecureMerkleTrie.get(
             abi.encodePacked(slot),
@@ -80,7 +83,7 @@ library EVMProofHelper {
         return RLPReader.readBytes(retrievedValue);
     }
 
-    function getFixedValue(bytes32 storageRoot, uint256 slot, bytes[] memory witness) private pure returns(bytes32) {
+    function getFixedValue(bytes32 storageRoot, uint256 slot, bytes[] memory witness) private view returns(bytes32) {
         bytes memory value = getSingleStorageProof(storageRoot, slot, witness);
         // RLP encoded storage slots are stored without leading 0 bytes.
         // Casting to bytes32 appends trailing 0 bytes, so we have to bit shift to get the 
@@ -165,7 +168,7 @@ library EVMProofHelper {
         }
     }
 
-    function getDynamicValue(bytes32 storageRoot, uint256 slot, StateProof memory proof, uint256 proofIdx) private pure returns(bytes memory value, uint256 newProofIdx) {
+    function getDynamicValue(bytes32 storageRoot, uint256 slot, StateProof memory proof, uint256 proofIdx) private view returns(bytes memory value, uint256 newProofIdx) {
         uint256 firstValue = uint256(getFixedValue(storageRoot, slot, proof.storageProofs[proofIdx++]));
         if(firstValue & 0x01 == 0x01) {
             // Long value: first slot is `length * 2 + 1`, following slots are data.
@@ -192,15 +195,31 @@ library EVMProofHelper {
     }
 
     function getStorageValues(address target, bytes32[] memory commands, uint8 cIdx, bytes[] memory constants, bytes32 stateRoot, StateProof memory proof) internal view returns(bytes[] memory values, uint8 nextCIdx) {
+       
+       console.log("target");
+        console.log(target);
+
         bytes32 storageRoot = getStorageRoot(stateRoot, target, proof.stateTrieWitness);
         uint256 proofIdx = 0;
-        values = new bytes[](commands.length);
+        values = new bytes[](0);
 
         console.log("commands length");
         console.log(commands.length);
 
+        uint8 tId = uint8(commands[cIdx][0]);
+
         for(uint8 i = cIdx; i < commands.length; i++) {
+
+            console.log("i");
+            console.log(i);
+
             bytes32 command = commands[i];
+
+            //When the target id changes..
+            if (uint8(command[0]) != tId) {
+                break;
+            }
+
 
             console.log("thisCommand");
             console.logBytes32(command);
@@ -214,24 +233,43 @@ library EVMProofHelper {
                 console.log("slot");
                 console.log(slot);
 
-                console.log("prooooof");
-                console.log(proof.storageProofs[0].length);
-                console.logBytes(proof.storageProofs[0][0]);
-                //console.logBytes(proof.storageProofs[0][1]);
 
-                values[i] = abi.encode(getFixedValue(storageRoot, slot, proof.storageProofs[proofIdx++]));
+                console.log("prooooof");
+                console.log(proof.storageProofs.length);
+
+                console.log(proof.storageProofs[proofIdx].length);
+                console.logBytes(proof.storageProofs[proofIdx][0]);
+                //console.logBytes(proof.storageProofs[proofIdx][1]);
+                //console.logBytes(proof.storageProofs[proofIdx][2]);
+
+                console.log("values length1");
+                console.log(values.length);
+
+                assembly {
+                    mstore(values, add(i, 1)) // Increment values array length
+                }
+
+
+                values[i] = abi.encode(getFixedValue(storageRoot, slot, proof.storageProofs[proofIdx]));
+
+                proofIdx++;
 
                 console.log("value");
                 console.logBytes(values[i]);
+                console.log("values length");
+                console.log(values.length);
 
                 //revert Problem(values[i]);
                 if(values[i].length > 32) {
                     revert InvalidSlotSize(values[i].length);
                 }
             } else {
+                console.log("DYNAMIC");
                 (values[i], proofIdx) = getDynamicValue(storageRoot, slot, proof, proofIdx);
             }
             nextCIdx = i;
+
+
         }
     }
 }

@@ -4,6 +4,8 @@ pragma solidity ^0.8.17;
 import { IEVMVerifier } from './IEVMVerifier.sol';
 import { Address } from '@openzeppelin/contracts/utils/Address.sol';
 
+import "./console.sol";
+
 /**
  * @dev Callback implementation for users of `EVMFetcher`. If you use `EVMFetcher`, your contract must
  *      inherit from this contract in order to handle callbacks correctly.
@@ -17,7 +19,7 @@ error Resp(bytes);
     /**
      * @dev Internal callback function invoked by CCIP-Read in response to a `getStorageSlots` request.
      */
-    function getStorageSlotsCallback(bytes calldata response, bytes calldata extradata) external {
+    function getStorageSlotsCallback(bytes calldata response, bytes calldata extradata) external returns(bytes[][] memory) {
 
 
         //bytes memory proofsDataBytes = abi.decode(response, (bytes));
@@ -41,12 +43,20 @@ error Resp(bytes);
         if(values.length != commands.length) {
             revert ResponseLengthMismatch(values.length, commands.length);
         }
+
+        console.log("LAA");
+        console.logBytes(values[0][0]);
+        console.logBytes(values[1][0]);
         bytes memory ret = address(this).functionCall(abi.encodeWithSelector(callback, values, callbackData));
         
         //revert Oops(uint8(1));
 
-        assembly {
-            return(add(ret, 32), mload(ret))
-        }
+        bytes[] memory rets = new bytes[](2);
+
+        return values;
+
+        //assembly {
+        //    return(add(ret, 0), mload(ret))
+        //}
     }
 }

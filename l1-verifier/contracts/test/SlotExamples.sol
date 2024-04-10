@@ -19,8 +19,8 @@ contract SlotExamples is EVMFetchTarget {
     function getLatestFromTwo(address secondTarget) public view returns(bytes[][] memory) {
         EVMFetcher.newFetchRequest(verifier, target)
             .getStatic(0)
-            //.setTarget(secondTarget)
-            //.getStatic(0)
+            .setTarget(secondTarget)
+            .getStatic(0)
             .fetch(this.getLatestFromTwoCallback.selector, "");
     }
 

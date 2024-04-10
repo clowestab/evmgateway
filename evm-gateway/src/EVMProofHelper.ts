@@ -63,6 +63,9 @@ export class EVMProofHelper {
     target: AddressLike,
     slots: bigint[]
   ): Promise<StateProof> {
+
+    console.log("slots", slots);
+
     const args = [
       target,
       slots.map((slot) => toBeHex(slot, 32)),
@@ -71,7 +74,7 @@ export class EVMProofHelper {
 
     console.log("Args", args);
 
-    console.log("provider", this.provider);
+    //console.log("provider", this.provider);
 
     const proofs: EthGetProofResponse = await this.provider.send(
       'eth_getProof',
@@ -79,6 +82,8 @@ export class EVMProofHelper {
     );
 
     console.log("lol");
+
+    console.log(proofs.storageProof);
 
     return {
       stateTrieWitness: proofs.accountProof,

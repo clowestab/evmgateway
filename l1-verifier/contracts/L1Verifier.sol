@@ -89,6 +89,10 @@ contract L1Verifier is IEVMVerifier {
             }
 
             storageResults[i] = values;
+
+            console.log("result");
+            console.log(values.length);
+            console.logBytes(values[0]);
             nextCIdxToUse = nextCIdx;
 
         }

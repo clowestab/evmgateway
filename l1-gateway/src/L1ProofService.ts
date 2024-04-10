@@ -68,6 +68,9 @@ export class L1ProofService implements IProofService<L1ProvableBlock> {
     target: AddressLike,
     slots: bigint[]
   ): Promise<string> {
+
+    console.log("blockno ts", blockNo);
+
     const proof = await this.helper.getProofs(blockNo, target, slots);
     const rpcBlock: JsonRpcBlock = await this.provider.send(
       'eth_getBlockByNumber',

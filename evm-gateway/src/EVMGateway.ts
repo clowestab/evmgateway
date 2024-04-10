@@ -137,7 +137,12 @@ export class EVMGateway<T extends ProvableBlock> {
     commands: string[],
     constants: string[]
   ): Promise<string[]> {
+
+    
     const block = await this.proofService.getProvableBlock();
+
+    console.log("WTF", block);
+
     const allRequests: Promise<StorageElement>[] = [];
     const requestsMap: {[key: string]: Promise<StorageElement>[]} = {};
     // For each request, spawn a promise to compute the set of slots required
@@ -281,7 +286,7 @@ export class EVMGateway<T extends ProvableBlock> {
     );
 
     // If there are multiple path elements, recursively hash them solidity-style to get the final slot.
-    for (let j = 2; j < 32 && commandWord[j] != 0xff; j++) {
+    for (let j = 3; j < 32 && commandWord[j] != 0xff; j++) {
       const index = await this.executeOperation(
         commandWord[j],
         constants,
@@ -292,7 +297,7 @@ export class EVMGateway<T extends ProvableBlock> {
       );
     }
 
-    console.log("SLOT", slot);
+    console.log("SLOTs", slot);
 
     return { slot, isDynamic };
   }

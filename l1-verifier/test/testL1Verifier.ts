@@ -10,6 +10,7 @@ import {
   JsonRpcProvider,
   Signer,
   ethers as ethersT,
+  AbiCoder
 } from 'ethers';
 import { ethers } from 'hardhat';
 import { EthereumProvider } from 'hardhat/types';
@@ -28,6 +29,8 @@ declare module 'hardhat/types/runtime' {
     ethers: ethersObj;
   }
 }
+
+var l2ContractAddress;
 
 describe('L1Verifier', () => {
   let provider: BrowserProvider;
@@ -69,22 +72,29 @@ describe('L1Verifier', () => {
       'L1Verifier',
       signer
     );
+    //verifier = await l1VerifierFactory.deploy(['test:']);
+    //Lets deploy to a locally running ganache node such that we can play
     verifier = await l1VerifierFactory.deploy(["http://localhost:8080/{sender}/{data}.json"]);
 
-
+    //Deploy a contract with various types of static/dynamic data in storage slots
     const testL2Factory = await ethers.getContractFactory('TestL2', signer);
-    const l2contract = await testL2Factory.deploy();
+    const l2Contract = await testL2Factory.deploy();
+    l2ContractAddress = await l2Contract.getAddress();
 
-      const anotherTestL2Factory = await ethers.getContractFactory('SlotDataContract', signer);
-      const anotherL2contract = await anotherTestL2Factory.deploy();
-      const anotherL2contractAddress = await anotherL2contract.getAddress();
+    console.log("l2ContractAddress", l2ContractAddress);
 
-      console.log("address", anotherL2contractAddress);
+    //Deploy another contract with various types of static/dynamic data in storage slots
+    const anotherTestL2Factory = await ethers.getContractFactory('SlotDataContract', signer);
+    const anotherL2Contract = await anotherTestL2Factory.deploy();
+    const anotherL2ContractAddress = await anotherL2Contract.getAddress();
 
+    console.log("anotherL2ContractAddress", anotherL2ContractAddress);
+
+    //Deploy the test resolution contract
     const testL1Factory = await ethers.getContractFactory('SlotExamples', signer);
     target = await testL1Factory.deploy(
       await verifier.getAddress(),
-      await anotherL2contractAddress
+      await anotherL2ContractAddress
     );
     // Mine an empty block so we have something to prove against
     await provider.send('evm_mine', []);
@@ -96,9 +106,13 @@ describe('L1Verifier', () => {
 
     try {
 
-      const result = await target.getLatestFromTwo("0x95222290dd7278aa3ddd389cc1e1d165cc4bafe5", { enableCcipRead: true });
-      expect(result).to.equal(
-        'clowes'
+      const result = await target.getLatestFromTwo(l2ContractAddress!, { enableCcipRead: true });
+
+      console.log("result", result);
+      const decodedResult = AbiCoder.defaultAbiCoder().decode(['uint256'], result[0][0]);
+      
+      expect(decodedResult[0]).to.equal(
+        43n
       );
 
       } catch (e) {
