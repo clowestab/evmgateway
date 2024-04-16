@@ -4,9 +4,10 @@ pragma solidity ^0.8.17;
 import { IEVMVerifier } from './IEVMVerifier.sol';
 import { EVMFetchTarget } from './EVMFetchTarget.sol';
 import { Address } from '@openzeppelin/contracts/utils/Address.sol';
+import './console.sol';
 
 interface IEVMGateway {
-    function getStorageSlots(address[] calldata targets, bytes32[] memory commands, bytes[] memory constants) external pure returns(bytes memory witness);
+    function getStorageSlots(address[] calldata targets, bytes32[] memory commands, bytes[] memory constants) external view returns(bytes memory witness);
 }
 
 uint8 constant FLAG_DYNAMIC = 0x01;
@@ -50,7 +51,7 @@ library EVMFetcher {
      * @param verifier An instance of a verifier contract that can provide and verify the storage slot information.
      * @param target The address of the contract to fetch storage proofs for.
      */
-    function newFetchRequest(IEVMVerifier verifier, address target) internal pure returns (EVMFetchRequest memory) {
+    function newFetchRequest(IEVMVerifier verifier, address target) internal view returns (EVMFetchRequest memory) {
         bytes32[] memory commands = new bytes32[](MAX_COMMANDS);
         bytes[] memory constants = new bytes[](MAX_CONSTANTS);
         address[] memory targets = new address[](MAX_COMMANDS);
@@ -72,11 +73,16 @@ library EVMFetcher {
      * @param request The request object being operated on.
      * @param baseSlot The base slot ID that forms the root of the path.
      */
-    function getStatic(EVMFetchRequest memory request, uint256 baseSlot) internal pure returns (EVMFetchRequest memory) {
+    function getStatic(EVMFetchRequest memory request, uint256 baseSlot) internal view returns (EVMFetchRequest memory) {
+
+        console.log("getStatic");
+
         bytes32[] memory commands = request.commands;
         uint256 commandIdx = commands.length;
         if(commandIdx > 0 && request.operationIdx < 32) {
             // Terminate previous command
+                    console.log("term 1");
+
             _addOperation(request, OP_END);
         }
         assembly {
@@ -87,8 +93,14 @@ library EVMFetcher {
         }
 
         request.operationIdx = 0;
+                console.log("1");
+
         _addOperation(request, request.currentTargetIndex);
+                console.log("2");
+
         _addOperation(request, 0);
+                console.log("3");
+
         _addOperation(request, _addConstant(request, abi.encode(baseSlot)));
         return request;
     }
@@ -101,11 +113,17 @@ library EVMFetcher {
      * @param request The request object being operated on.
      * @param baseSlot The base slot ID that forms the root of the path.
      */
-    function getDynamic(EVMFetchRequest memory request, uint256 baseSlot) internal pure returns (EVMFetchRequest memory) {
+    function getDynamic(EVMFetchRequest memory request, uint256 baseSlot) internal view returns (EVMFetchRequest memory) {
+
+        console.log("getDynamic");
+
         bytes32[] memory commands = request.commands;
         uint256 commandIdx = commands.length;
         if(commandIdx > 0 && request.operationIdx < 32) {
             // Terminate previous command
+
+                    console.log("term");
+
             _addOperation(request, OP_END);
         }
         assembly {
@@ -116,8 +134,13 @@ library EVMFetcher {
         }
 
         request.operationIdx = 0;
+                console.log("a");
+
         _addOperation(request, request.currentTargetIndex);
+                console.log("b");
+
         _addOperation(request, FLAG_DYNAMIC);
+        console.log("---");
         _addOperation(request, _addConstant(request, abi.encode(baseSlot)));
         return request;
     }
@@ -129,10 +152,12 @@ library EVMFetcher {
      * @param request The request object being operated on.
      * @param el The element to add.
      */
-    function element(EVMFetchRequest memory request, uint256 el) internal pure returns (EVMFetchRequest memory) {
+    function element(EVMFetchRequest memory request, uint256 el) internal view returns (EVMFetchRequest memory) {
         if(request.operationIdx >= 32) {
             revert CommandTooLong();
         }
+                console.log("element e");
+
         _addOperation(request, _addConstant(request, abi.encode(el)));
         return request;
     }
@@ -142,10 +167,12 @@ library EVMFetcher {
      * @param request The request object being operated on.
      * @param el The element to add.
      */
-    function element(EVMFetchRequest memory request, bytes32 el) internal pure returns (EVMFetchRequest memory) {
+    function element(EVMFetchRequest memory request, bytes32 el) internal view returns (EVMFetchRequest memory) {
         if(request.operationIdx >= 32) {
             revert CommandTooLong();
         }
+                console.log("element d");
+
         _addOperation(request, _addConstant(request, abi.encode(el)));
         return request;
     }
@@ -155,10 +182,12 @@ library EVMFetcher {
      * @param request The request object being operated on.
      * @param el The element to add.
      */
-    function element(EVMFetchRequest memory request, address el) internal pure returns (EVMFetchRequest memory) {
+    function element(EVMFetchRequest memory request, address el) internal view returns (EVMFetchRequest memory) {
         if(request.operationIdx >= 32) {
             revert CommandTooLong();
         }
+                console.log("element c");
+
         _addOperation(request, _addConstant(request, abi.encode(el)));
         return request;
     }
@@ -168,10 +197,12 @@ library EVMFetcher {
      * @param request The request object being operated on.
      * @param el The element to add.
      */
-    function element(EVMFetchRequest memory request, bytes memory el) internal pure returns (EVMFetchRequest memory) {
+    function element(EVMFetchRequest memory request, bytes memory el) internal view returns (EVMFetchRequest memory) {
         if(request.operationIdx >= 32) {
             revert CommandTooLong();
         }
+                console.log("element b");
+
         _addOperation(request, _addConstant(request, el));
         return request;
     }
@@ -181,10 +212,11 @@ library EVMFetcher {
      * @param request The request object being operated on.
      * @param el The element to add.
      */
-    function element(EVMFetchRequest memory request, string memory el) internal pure returns (EVMFetchRequest memory) {
+    function element(EVMFetchRequest memory request, string memory el) internal view returns (EVMFetchRequest memory) {
         if(request.operationIdx >= 32) {
             revert CommandTooLong();
         }
+        console.log("element");
         _addOperation(request, _addConstant(request, bytes(el)));
         return request;
     }
@@ -194,32 +226,39 @@ library EVMFetcher {
      * @param request The request object being operated on.
      * @param idx The index of the previous fetch request, starting at 0.
      */
-    function ref(EVMFetchRequest memory request, uint8 idx) internal pure returns (EVMFetchRequest memory) {
+    function ref(EVMFetchRequest memory request, uint8 idx) internal view returns (EVMFetchRequest memory) {
         if(request.operationIdx >= 32) {
             revert CommandTooLong();
         }
         if(idx > request.commands.length || idx > 31) {
             revert InvalidReference(idx, request.commands.length);
         }
+        console.log("ref");
         _addOperation(request, OP_BACKREF | idx);
         return request;
     }
 
 
-    function refSlice(EVMFetchRequest memory request, uint8 idx, uint8 offset, uint8 length) internal pure returns (EVMFetchRequest memory) {
+    function refSlice(EVMFetchRequest memory request, uint8 idx, uint8 offset, uint8 length) internal view returns (EVMFetchRequest memory) {
         if(request.operationIdx >= 32) {
             revert CommandTooLong();
         }
         if(idx > request.commands.length || idx > 31) {
             revert InvalidReference(idx, request.commands.length);
         }
+        console.log("..pack");
+
+        bytes memory pack = abi.encodePacked(offset, length);
+        console.logBytes(pack);
+        console.log(OP_SLICE | 2);
         _addOperation(request, OP_SLICE | _addConstant(request, abi.encodePacked(offset, length)));
+        console.log(".-.");
         return request;
     }
 
 
 
-    function setTarget(EVMFetchRequest memory request, address newTarget) internal pure returns (EVMFetchRequest memory) {
+    function setTarget(EVMFetchRequest memory request, address newTarget) internal view returns (EVMFetchRequest memory) {
         
         address[] memory targets = request.targets;
 
@@ -236,7 +275,7 @@ library EVMFetcher {
     }
 
 
-    function setTargetRef(EVMFetchRequest memory request, uint8 idx) internal pure returns (EVMFetchRequest memory) {
+    function setTargetRef(EVMFetchRequest memory request, uint8 idx) internal view returns (EVMFetchRequest memory) {
         
         address fakeAddress = address(uint160(bytes20(bytes1(idx)) >> (152)));
 
@@ -255,6 +294,7 @@ library EVMFetcher {
     function fetch(EVMFetchRequest memory request, bytes4 callbackId, bytes memory callbackData) internal view {
         if(request.commands.length > 0 && request.operationIdx < 32) {
             // Terminate last command
+            console.log("last");
             _addOperation(request, OP_END);
         }
         revert OffchainLookup(
@@ -266,17 +306,22 @@ library EVMFetcher {
         );
     }
 
-    function _addConstant(EVMFetchRequest memory request, bytes memory value) private pure returns(uint8 idx) {
+    function _addConstant(EVMFetchRequest memory request, bytes memory value) private view returns(uint8 idx) {
         bytes[] memory constants = request.constants;
         idx = uint8(constants.length);
         assembly {
             mstore(constants, add(idx, 1)) // Increment constant array length
         }
+        console.log(idx);
         constants[idx] = value;
     }
 
-    function _addOperation(EVMFetchRequest memory request, uint8 op) private pure {
+    function _addOperation(EVMFetchRequest memory request, uint8 op) private view {
         uint256 commandIdx = request.commands.length - 1;
+        console.log("operation");
+        console.log(op);
+        console.log("-operation-");
+
         request.commands[commandIdx] = request.commands[commandIdx] | (bytes32(bytes1(op)) >> (8 * request.operationIdx++));
     }
 }

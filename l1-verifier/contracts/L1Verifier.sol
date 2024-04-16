@@ -39,10 +39,16 @@ contract L1Verifier is IEVMVerifier {
        //(bytes[] memory proofDatas) = abi.decode(proofsData, (bytes[]));
 
                                 //revert Oops(uint8(3));
+
+        //console.log("proof length");
+        //console.log(proofsData.length);
         
         uint8 nextCIdxToUse = 0;
 
         for(uint256 i = 0; i < proofsData.length; i++) {
+
+            //console.log("III");
+            //console.log(i);
 
             //revert Problem(proofsData[0]);
 
@@ -64,40 +70,62 @@ contract L1Verifier is IEVMVerifier {
             RLPReader.RLPItem[] memory headerFields = RLPReader.readList(l1Data.blockHeader);
             bytes32 stateRoot = bytes32(RLPReader.readBytes(headerFields[3]));
             
-            (bytes[] memory values, uint8 nextCIdx) = EVMProofHelper.getStorageValues(targets[i], commands, nextCIdxToUse, constants, stateRoot, stateProof);
+            //console.log("Target");
+            //console.log(targets[i]);
+
+            address targetToUse = targets[i];
+
+            if (uint160(targets[i]) <= 256) {
+                //console.log("hhhh");
+                //console.logBytes(storageResults[0][1]);
+                targetToUse = abi.decode(storageResults[0][1], (address));
+            }
+
+            (bytes[] memory values, uint8 nextCIdx) = EVMProofHelper.getStorageValues(targetToUse, commands, nextCIdxToUse, constants, stateRoot, stateProof);
             
-            console.log("State root");
-            console.logBytes(abi.encodePacked(stateRoot));
+            //console.log("State root");
+            //console.logBytes(abi.encodePacked(stateRoot));
 
-            console.log("Block Number");
-            console.log(l1Data.blockNo);
+            //console.log("Block Number");
+            //console.log(l1Data.blockNo);
 
-            console.log("Target");
-            console.log(targets[i]);
+            //console.log("Target");
+            //console.log(targets[i]);
 
-            console.log("Commands");
-            console.logBytes32(commands[0]);
+            //console.log("Commands");
+            //console.logBytes32(commands[0]);
 
-            console.log("constants");
-            console.logBytes(constants[0]);
+            //console.log("constants");
+            //console.logBytes(constants[0]);
 
-            console.log("stateProof");
-            console.logBytes(stateProof.stateTrieWitness[0]);
+            //console.log("stateProof");
+            //console.logBytes(stateProof.stateTrieWitness[0]);
 
             assembly {
+                //mstore(storageResults, add(i, 1)) // Increment command array length
                 mstore(storageResults, add(i, 1)) // Increment command array length
             }
 
             storageResults[i] = values;
 
-            console.log("result");
+            console.log("resulti");
             console.log(values.length);
-            console.logBytes(values[0]);
+
+            if (i == 1) {
+                //console.logBytes(values[0]);
+            }
             nextCIdxToUse = nextCIdx;
+
+            //console.log("nextCIdxToUse");
+            //console.log(nextCIdxToUse);
 
         }
 
+    bytes memory rw = storageResults[0][0];
+        console.log("qq1");
+                    //console.logBytes(rw);
+
                                     //revert Oops(uint8(6));
-        return storageResults;
+        //return storageResults;
     }
 }

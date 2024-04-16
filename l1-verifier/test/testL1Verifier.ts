@@ -83,28 +83,42 @@ describe('L1Verifier', () => {
 
     console.log("l2ContractAddress", l2ContractAddress);
 
-    //Deploy another contract with various types of static/dynamic data in storage slots
-    const anotherTestL2Factory = await ethers.getContractFactory('SlotDataContract', signer);
-    const anotherL2Contract = await anotherTestL2Factory.deploy();
-    const anotherL2ContractAddress = await anotherL2Contract.getAddress();
+    const anotherContractFactory = await ethers.getContractFactory('AnotherTestL2', signer);
+    const anotherContract = await anotherContractFactory.deploy();
+    const anotherContractAddress = await anotherContract.getAddress();
 
-    console.log("anotherL2ContractAddress", anotherL2ContractAddress);
+    console.log("anotherContractAddress", anotherContractAddress);
+
+    //Deploy another contract with various types of static/dynamic data in storage slots
+    const slotDataContractFactory = await ethers.getContractFactory('SlotDataContract', signer);
+    const slotDataContract = await slotDataContractFactory.deploy(
+      anotherContractAddress
+    );
+    const slotDataContractAddress = await slotDataContract.getAddress();
+
+    console.log("slotDataContractAddress", slotDataContractAddress);
 
     //Deploy the test resolution contract
     const testL1Factory = await ethers.getContractFactory('SlotExamples', signer);
     target = await testL1Factory.deploy(
       await verifier.getAddress(),
-      await anotherL2ContractAddress
+      await slotDataContractAddress
     );
     // Mine an empty block so we have something to prove against
     await provider.send('evm_mine', []);
   });
 
+  //DONE
+  it('returns a static value', async () => {
 
+    const result = await target.getLatest({ enableCcipRead: true });
+    expect(Number(result)).to.equal(49);
+  });
 
-  it('set addr', async () => {
+  //DONE
+  it('get two static values from two different targets', async () => {
 
-    try {
+    //try {
 
       const result = await target.getLatestFromTwo(l2ContractAddress!, { enableCcipRead: true });
 
@@ -112,12 +126,12 @@ describe('L1Verifier', () => {
       const decodedResult = AbiCoder.defaultAbiCoder().decode(['uint256'], result[0][0]);
       
       expect(decodedResult[0]).to.equal(
-        43n
+        49n
       );
 
-      } catch (e) {
+    //  } catch (e) {
         
-        console.log(e);
+        //console.log(e);
         //const iface = new ethers.Interface(["error Problem(bytes)"]);
         //const erro = iface.decodeErrorResult("Problem", e.data)
     
@@ -127,118 +141,164 @@ describe('L1Verifier', () => {
 
         //ans -   '0x000000000000000000000000000000000000000000000000000000000000002a' - succeeds
         //alt - Result(1) [ '0x2a' ] - fails
-      }
+      //}
 
   });
 
+  //DONE
+  it('returns a string from a storage slot on a target', async () => {
 
+    const result = await target.getName({ enableCcipRead: true });
 
- /* it('surname', async () => {
+    expect(result).to.equal('Satoshi');
+  });
+
+  //DONE
+  it('returns an array of strings from two different storage slots on the target', async () => {
+
+    const result = await target.getNameTwice({ enableCcipRead: true });
+
+    console.log(result);
+
+    expect(result).to.eql([ 'Satoshi', 'tomiscool' ]);
+  });
+
+  //DONE
+  it('gets a value from an mapping using a string key', async () => {
 
     try {
-      const result = await target.getStringStringFromRefSlice({ enableCcipRead: true });
+      const result = await target.getStringAndStringFromMapping({ enableCcipRead: true });
       expect(result).to.equal(
         'clowes'
       );
 
-      } catch (e) {
-        console.log(e);
-        const iface = new ethers.Interface(["error Problem(bytes)"]);
-        const erro = iface.decodeErrorResult("Problem", e.data)
-    
-        console.log(erro);
-    
-        //parsedValue = Result(1) [ '0x2a' ]; - fails
+    } catch (e) {
+      console.log(e);
+      const iface = new ethers.Interface(["error Problem(bytes)"]);
+      const erro = iface.decodeErrorResult("Problem", e.data)
+  
+      console.log(erro);
+  
+      //parsedValue = Result(1) [ '0x2a' ]; - fails
 
-        //ans -   '0x000000000000000000000000000000000000000000000000000000000000002a' - succeeds
-        //alt - Result(1) [ '0x2a' ] - fails
-      }
+      //ans -   '0x000000000000000000000000000000000000000000000000000000000000002a' - succeeds
+      //alt - Result(1) [ '0x2a' ] - fails
+    }
+  });
 
-  });*/
+  //DONE
+  it('get a dynamic string value using a key that is sliced from the previously returned value', async () => {
 
-
-  /*
-    it('simple proofs for ref slice', async () => {
-
-    try {
+    //try {
       const result = await target.getHighscorerFromRefSlice({ enableCcipRead: true });
       expect(result).to.equal(
         'Hal Finney'
       );
 
-      } catch (e) {
-        console.log(e);
-        const iface = new ethers.Interface(["error Problem(bytes)"]);
-        const erro = iface.decodeErrorResult("Problem", e.data)
+     // } catch (e) {
+      //  console.log(e);
+        
+        //const iface = new ethers.Interface(["error Problem(bytes)"]);
+        //const erro = iface.decodeErrorResult("Problem", e.data)
     
-        console.log(erro);
+        //console.log(erro);
     
         //parsedValue = Result(1) [ '0x2a' ]; - fails
 
         //ans -   '0x000000000000000000000000000000000000000000000000000000000000002a' - succeeds
         //alt - Result(1) [ '0x2a' ] - fails
-      }
+      //}
 
   });
-  */
 
+  //DONE
+  it('get an address by slicing part of a previously fetched value', async () => {
 
-/*  it('simple proofs for fixed values', async () => {
-    const result = await target.getLatest({ enableCcipRead: true });
-    expect(Number(result)).to.equal(42);
-  });*/
-/*
-  it('simple proofs for dynamic values', async () => {
-    const result = await target.getName({ enableCcipRead: true });
-    expect(result).to.equal('Satoshi');
+    const bl = ethers.getBytes("0xab");
+
+    console.log("BL", bl[0]);
+
+    //try {
+    const result = await target.getAddressFromRefSlice({ enableCcipRead: true });
+    expect(result).to.equal('tom');
+  
+    //} catch (e) {
+    //  console.log(e);
+    //  const iface = new ethers.Interface(["error Problem(bytes)"]);
+    //  const erro = iface.decodeErrorResult("Problem", e.data)
+  
+    //  console.log(erro);
+  
+      //ans -   '0x000000000000000000000000000000000000000000000000000000000000002a' - succeeds
+      //alt - Result(1) [ '0x2a' ] - fails
+    //}
+  });
+  
+  //
+  it.only('get an address by slicing part of a previously fetched value', async () => {
+
+    //try {
+    const result = await target.getValueFromAddressFromRef({ enableCcipRead: true });
+    expect(Number(result)).to.equal(262);
+  
+    //} catch (e) {
+    //  console.log(e);
+    //  const iface = new ethers.Interface(["error Problem(bytes)"]);
+    //  const erro = iface.decodeErrorResult("Problem", e.data)
+  
+    //  console.log(erro);
+  
+      //ans -   '0x000000000000000000000000000000000000000000000000000000000000002a' - succeeds
+      //alt - Result(1) [ '0x2a' ] - fails
+    //}
   });
 
-  it('nested proofs for dynamic values', async () => {
-    const result = await target.getHighscorer(42, { enableCcipRead: true });
+  //wip - incomplete non functional
+  it('slice', async () => {
+    
+    //try {
+    const result = await target.getValueFromAddressFromRefSlice({ enableCcipRead: true });
+    expect(Number(result)).to.equal(262);
+  
+    //} catch (e) {
+    //  console.log(e);
+    //  const iface = new ethers.Interface(["error Problem(bytes)"]);
+    //  const erro = iface.decodeErrorResult("Problem", e.data)
+  
+    //  console.log(erro);
+  
+      //ans -   '0x000000000000000000000000000000000000000000000000000000000000002a' - succeeds
+      //alt - Result(1) [ '0x2a' ] - fails
+    //}
+  });
+  
+  //DONE
+  it('get a dynamic value from a mapping keyed on uint256', async () => {
+    const result = await target.getHighscorer(49, { enableCcipRead: true });
     expect(result).to.equal('Hal Finney');
   });
 
-  it('nested proofs for long dynamic values', async () => {
+  //DONE
+  it('get a long (multi slot) dynamic value from a mapping keyed on uint256', async () => {
     const result = await target.getHighscorer(1, { enableCcipRead: true });
     expect(result).to.equal(
       'Hubert Blaine Wolfeschlegelsteinhausenbergerdorff Sr.'
     );
   });
 
-  it('nested proofs with lookbehind', async () => {
+  //DONE
+  it('get static value from mapping using lookbehind to reference value', async () => {
     const result = await target.getLatestHighscore({ enableCcipRead: true });
     expect(Number(result)).to.equal(12345);
   });
-*/
 
-/*
-it('nested proofs with lookbehind for dynamic values', async () => {
-  const result = await target.getLatestHighscorer({ enableCcipRead: true });
-  expect(result).to.equal('Hal Finney');
-});
-*/
+  //DONE
+  it('get dynamic value from mapping using lookbehind to reference value', async () => {
+    const result = await target.getLatestHighscorer({ enableCcipRead: true });
+    expect(result).to.equal('Hal Finney');
+  });
 
-/*
-it('address ref slice', async () => {
-
-  try {
-  const result = await target.getAddressFromRefSlice({ enableCcipRead: true });
-  expect(result).to.equal('tom');
-
-  } catch (e) {
-    console.log(e);
-    const iface = new ethers.Interface(["error Problem(bytes)"]);
-    const erro = iface.decodeErrorResult("Problem", e.data)
-
-    console.log(erro);
-
-    //ans -   '0x000000000000000000000000000000000000000000000000000000000000002a' - succeeds
-    //alt - Result(1) [ '0x2a' ] - fails
-  }
-});
-*/
-
-/*
+  //DONE
   it('mappings with variable-length keys', async () => {
     const result = await target.getNickname('Money Skeleton', {
       enableCcipRead: true,
@@ -246,23 +306,27 @@ it('address ref slice', async () => {
     expect(result).to.equal('Vitalik Buterin');
   });
 
+  //DONE
   it('nested proofs of mappings with variable-length keys', async () => {
     const result = await target.getPrimaryNickname({ enableCcipRead: true });
     expect(result).to.equal('Hal Finney');
   });
 
+  //DONE
   it('treats uninitialized storage elements as zeroes', async () => {
     const result = await target.getZero({ enableCcipRead: true });
     expect(Number(result)).to.equal(0);
   });
 
+  //DONE
   it('treats uninitialized dynamic values as empty strings', async () => {
     const result = await target.getNickname('Santa', { enableCcipRead: true });
     expect(result).to.equal('');
   });
 
+  //DONE
   it('will index on uninitialized values', async () => {
     const result = await target.getZeroIndex({ enableCcipRead: true });
     expect(Number(result)).to.equal(1);
-  })*/
+  })
 });

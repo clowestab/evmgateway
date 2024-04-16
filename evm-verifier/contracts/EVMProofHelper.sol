@@ -95,6 +95,9 @@ library EVMProofHelper {
         uint8 opcode = uint8(operation) & 0xe0;
         uint8 operand = uint8(operation) & 0x1f;
 
+        console.log("opcode");
+        console.log(opcode);
+
         if(opcode == OP_CONSTANT) {
 
             console.log("CONSTANT");
@@ -105,6 +108,8 @@ library EVMProofHelper {
             return values[operand];
         } else if(opcode == OP_SLICE) {
 
+            console.log("slice");
+
             //const [offset, length] = getBytes(constants[operand])
 
             uint8 offset = uint8(bytes1(constants[operand].slice(0, 1)));
@@ -112,7 +117,15 @@ library EVMProofHelper {
 
             //const value = await (await requests[requests.length - 1]).value();
 
-            bytes memory parsedValue = values[values.length - 2].slice(offset, length);
+console.log("slice 2");
+console.log(offset);
+console.log(length);
+console.log(values.length);
+
+            //NOTE TOM: This was -2 previously and not working. Unsure why.
+            bytes memory parsedValue = values[values.length - 1].slice(offset, length);
+
+console.log("slice 2b");
 
             //pads to 32 bytes
             //return address(uint160(bytes20(parsedValue)));
@@ -120,6 +133,8 @@ library EVMProofHelper {
             bytes32 ist;
 
             //bytes32 hmm = bytes12(parsedValue<<160);
+
+console.log("slice 3");
 
             assembly {
                 ist := mload(add(parsedValue, 32))
@@ -160,16 +175,32 @@ library EVMProofHelper {
         console.log("slotData");
         console.logBytes(slotData);
 
+        console.log("command length");
+        console.log(command.length);
+
         require(slotData.length == 32, "First path element must be 32 bytes");
         slot = uint256(bytes32(slotData));
         for(uint256 j = 3; j < 32 && command[j] != 0xff; j++) {
+            console.log("hi");
+            console.logBytes1(command[j]);
             bytes memory index = executeOperation(command[j], constants, values);
+            console.log("di");
             slot = uint256(keccak256(abi.encodePacked(index, slot)));
         }
+
+        console.log("computeFirstSlot");
+        console.log(slot);
     }
 
     function getDynamicValue(bytes32 storageRoot, uint256 slot, StateProof memory proof, uint256 proofIdx) private view returns(bytes memory value, uint256 newProofIdx) {
-        uint256 firstValue = uint256(getFixedValue(storageRoot, slot, proof.storageProofs[proofIdx++]));
+        bytes32 fValue = getFixedValue(storageRoot, slot, proof.storageProofs[proofIdx++]);
+        uint256 firstValue = uint256(fValue);
+        //0x01 is 00000001 in binary
+
+        console.log("firstValue");
+        console.logBytes32(fValue);
+        console.log(firstValue);
+        
         if(firstValue & 0x01 == 0x01) {
             // Long value: first slot is `length * 2 + 1`, following slots are data.
             uint256 length = (firstValue - 1) / 2;
@@ -188,6 +219,8 @@ library EVMProofHelper {
             }
             return (value, proofIdx);
         } else {
+
+            console.log("herre");
             // Short value: least significant byte is `length * 2`, other bytes are data.
             uint256 length = (firstValue & 0xFF) / 2;
             return (abi.encode(firstValue).slice(0, length), proofIdx);
@@ -196,6 +229,9 @@ library EVMProofHelper {
 
     function getStorageValues(address target, bytes32[] memory commands, uint8 cIdx, bytes[] memory constants, bytes32 stateRoot, StateProof memory proof) internal view returns(bytes[] memory values, uint8 nextCIdx) {
        
+
+       console.log("GET STORAGE VALUES");
+       console.log(cIdx);
        console.log("target");
         console.log(target);
 
@@ -206,9 +242,17 @@ library EVMProofHelper {
         console.log("commands length");
         console.log(commands.length);
 
+        //console.logBytes32(commands[0]);
+        //console.logBytes32(commands[1]);
+        //console.logBytes32(commands[2]);
+
         uint8 tId = uint8(commands[cIdx][0]);
 
+        uint8 valueIndex = 0;
+
         for(uint8 i = cIdx; i < commands.length; i++) {
+
+            nextCIdx = i;
 
             console.log("i");
             console.log(i);
@@ -217,6 +261,8 @@ library EVMProofHelper {
 
             //When the target id changes..
             if (uint8(command[0]) != tId) {
+
+                console.log("break");
                 break;
             }
 
@@ -246,30 +292,45 @@ library EVMProofHelper {
                 console.log(values.length);
 
                 assembly {
-                    mstore(values, add(i, 1)) // Increment values array length
+                    //mstore(values, add(i, 1)) // Increment values array length
+                    mstore(values, add(valueIndex, 1)) // Increment values array length
                 }
 
 
-                values[i] = abi.encode(getFixedValue(storageRoot, slot, proof.storageProofs[proofIdx]));
+                values[valueIndex] = abi.encode(getFixedValue(storageRoot, slot, proof.storageProofs[proofIdx]));
 
                 proofIdx++;
 
                 console.log("value");
-                console.logBytes(values[i]);
+                console.logBytes(values[valueIndex]);
                 console.log("values length");
                 console.log(values.length);
 
                 //revert Problem(values[i]);
-                if(values[i].length > 32) {
-                    revert InvalidSlotSize(values[i].length);
+                if(values[valueIndex].length > 32) {
+                    revert InvalidSlotSize(values[valueIndex].length);
                 }
             } else {
                 console.log("DYNAMIC");
-                (values[i], proofIdx) = getDynamicValue(storageRoot, slot, proof, proofIdx);
+
+                assembly {
+                    //TOM these break it
+                    //mstore(values, add(i, 1)) // Increment values array length
+                    //mstore(values, 5) // Increment values array length
+
+                    //this works
+                    mstore(values, add(valueIndex, 1)) // Increment values array length
+
+                }
+
+                (values[valueIndex], proofIdx) = getDynamicValue(storageRoot, slot, proof, proofIdx);
             }
-            nextCIdx = i;
+
+            valueIndex++;
 
 
+            console.log("helper val len");
+            console.log(values.length);
         }
     }
 }

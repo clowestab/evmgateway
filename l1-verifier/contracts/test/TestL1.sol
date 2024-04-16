@@ -16,159 +16,26 @@ contract TestL1 is EVMFetchTarget {
         target = _target;
     }
 
-    function getLatest() public view returns(uint256) {
-        EVMFetcher.newFetchRequest(verifier, target)
-            .getStatic(0)
-            .fetch(this.getLatestCallback.selector, "");
-    }
-
-    function getLatestCallback(bytes[] memory values, bytes memory) public pure returns(uint256) {
-        return abi.decode(values[0], (uint256));
-    }
-
-    function getName() public view returns(string memory) {
-        EVMFetcher.newFetchRequest(verifier, target)
-            .getDynamic(1)
-            .fetch(this.getNameCallback.selector, "");
-    }
-
-    function getNameCallback(bytes[] memory values, bytes memory) public pure returns(string memory) {
-        return string(values[0]);
-    }
-
-    function getHighscorer(uint256 idx) public view returns(string memory) {
-        EVMFetcher.newFetchRequest(verifier, target)
-            .getDynamic(3)
-                .element(idx)
-            .fetch(this.getHighscorerCallback.selector, "");
-    }
-
-    function getHighscorerCallback(bytes[] memory values, bytes memory) public pure returns(string memory) {
-        return string(values[0]);
-    }
-
-    function getLatestHighscore() public view returns(uint256) {
-        EVMFetcher.newFetchRequest(verifier, target)
-            .getStatic(0)
-            .getStatic(2)
-                .ref(0)
-            .fetch(this.getLatestHighscoreCallback.selector, "");
-    }
-
-    function getLatestHighscoreCallback(bytes[] memory values, bytes memory) public pure returns(uint256) {
-        return abi.decode(values[1], (uint256));
-    }
-
-    function getLatestHighscorer() public view returns(string memory) {
-        EVMFetcher.newFetchRequest(verifier, target)
-            .getStatic(0)
-            .getDynamic(3)
-                .ref(0)
-            .fetch(this.getLatestHighscorerCallback.selector, "");
-    }
-
-    function getLatestHighscorerCallback(bytes[] memory values, bytes memory) public pure returns(string memory) {
-        return string(values[1]);
-    }
-
-    function getNickname(string memory _name) public view returns(string memory) {
-        EVMFetcher.newFetchRequest(verifier, target)
-            .getDynamic(4)
-                .element(_name)
-            .fetch(this.getNicknameCallback.selector, "");
-    }
-
-    function getNicknameCallback(bytes[] memory values, bytes memory) public pure returns (string memory) {
-        return string(values[0]);
-    }
-
-    function getPrimaryNickname() public view returns(string memory) {
-        EVMFetcher.newFetchRequest(verifier, target)
-            .getDynamic(1)
-            .getDynamic(4)
-                .ref(0)
-            .fetch(this.getPrimaryNicknameCallback.selector, "");
-    }
-
-    function getPrimaryNicknameCallback(bytes[] memory values, bytes memory) public pure returns (string memory) {
-        return string(values[1]);
-    }
-
-    function getZero() public view returns(uint256) {
-        EVMFetcher.newFetchRequest(verifier, target)
-            .getStatic(5)
-            .fetch(this.getZeroCallback.selector, "");
-    }
-
-    function getZeroCallback(bytes[] memory values, bytes memory) public pure returns (uint256) {
-        return abi.decode(values[0], (uint256));
-    }
-
-    function getZeroIndex() public view returns(uint256) {
-        EVMFetcher.newFetchRequest(verifier, target)
-            .getStatic(5)
-            .getStatic(2)
-                .ref(0)
-            .fetch(this.getZeroIndexCallback.selector, "");
-    }
-
-    function getZeroIndexCallback(bytes[] memory values, bytes memory) public pure returns(uint256) {
-        return abi.decode(values[1], (uint256));
-    }
-
-
-    function getHighscorerFromRefSlice() public view returns(string memory) {
-        EVMFetcher.newFetchRequest(verifier, target)
-            .getStatic(6)
-            .getDynamic(3)
-                .refSlice(0, 2, 1)
-            .fetch(this.getHighscorerFromRefSliceCallback.selector, "");
-    }
-
-    function getHighscorerFromRefSliceCallback(bytes[] memory values, bytes memory) public pure returns(string memory) {
-        return string(values[1]);
-    }
-
-
-    function getAddressFromRefSlice() public view returns(string memory) {
-        EVMFetcher.newFetchRequest(verifier, target)
-            .getStatic(7)
-            .getDynamic(8)
-                .refSlice(0, 8, 20)
-            .fetch(this.getAddressFromRefSliceCallback.selector, "");
-    }
-
-    function getAddressFromRefSliceCallback(bytes[] memory values, bytes memory) public pure returns(string memory) {
-        return string(values[1]);
-    }
-
-
-    function getStringStringFromRefSlice() public view returns(string memory) {
-        EVMFetcher.newFetchRequest(verifier, target)
-            .getDynamic(9)
-            .getDynamic(10)
-                .element(string("tom"))
-            .fetch(this.getStringStringFromRefSliceCallback.selector, "");
-    }
-
-    function getStringStringFromRefSliceCallback(bytes[] memory values, bytes memory) public pure returns(string memory) {
-        return string(values[1]);
-    }
 
 
 
-    function getLatestFromTwo(address secondTarget) public view returns(bytes[][] memory) {
-        EVMFetcher.newFetchRequest(verifier, target)
-            .getStatic(0)
-            //.setTarget(secondTarget)
-            //.getStatic(0)
-            .fetch(this.getLatestFromTwoCallback.selector, "");
-    }
 
-    function getLatestFromTwoCallback(bytes[][] memory values, bytes memory) public pure returns(bytes[][] memory) {
-        
-        //return (abi.decode(values[0][0], (uint256)), abi.decode(values[0][0], (uint256)));
 
-        return values;
-    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }

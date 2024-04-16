@@ -19,7 +19,7 @@ error Resp(bytes);
     /**
      * @dev Internal callback function invoked by CCIP-Read in response to a `getStorageSlots` request.
      */
-    function getStorageSlotsCallback(bytes calldata response, bytes calldata extradata) external returns(bytes[][] memory) {
+    function getStorageSlotsCallback(bytes calldata response, bytes calldata extradata) external {
 
 
         //bytes memory proofsDataBytes = abi.decode(response, (bytes));
@@ -36,27 +36,44 @@ error Resp(bytes);
 //revert Oops(uint8(3));
         (IEVMVerifier verifier, address[] memory targets, bytes32[] memory commands, bytes[] memory constants, bytes4 callback, bytes memory callbackData) =
             abi.decode(extradata, (IEVMVerifier, address[], bytes32[], bytes[], bytes4, bytes));
+
+            console.log("QQ1");
         bytes[][] memory values = verifier.getStorageValues(targets, commands, constants, proofsData);
+            console.log("QQ2");
 
                 //revert Oops(uint8(3));
 
+    console.log("val length");
+    console.log(values.length);
+
+    console.log("commands length");
+    console.log(commands.length);
+
         if(values.length != commands.length) {
-            revert ResponseLengthMismatch(values.length, commands.length);
+            //This should move to helper and be renamed. as values in an array indexed by target so 2 commands, 1 target = 1 value key with 2 nested values
+            //revert ResponseLengthMismatch(values.length, commands.length);
         }
 
         console.log("LAA");
-        console.logBytes(values[0][0]);
-        console.logBytes(values[1][0]);
+        //console.logBytes(values[1][0]);
+        //console.logBytes(values[1][0]);
         bytes memory ret = address(this).functionCall(abi.encodeWithSelector(callback, values, callbackData));
         
+
+                console.log("ret");
+        console.logBytes(ret);
         //revert Oops(uint8(1));
 
         bytes[] memory rets = new bytes[](2);
 
-        return values;
+        console.logBytes(values[0][0]);
 
-        //assembly {
-        //    return(add(ret, 0), mload(ret))
-        //}
+        //return ret;
+
+        console.log(ret.length);
+
+        assembly {
+            return(add(ret, 32), mload(ret))
+        }
     }
 }

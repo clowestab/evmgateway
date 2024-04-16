@@ -7,11 +7,11 @@ import {
   solidityPackedKeccak256,
   toBigInt,
   zeroPadValue,
-  hexlify,
-  //AbiCoder,
+  hexlify
 } from 'ethers';
 
 import type { IProofService, ProvableBlock } from './IProofService.js';
+import { AbiCoder } from 'ethers';
 
 const OP_CONSTANT = 0x00;
 const OP_BACKREF = 0x20;
@@ -69,8 +69,13 @@ export class EVMGateway<T extends ProvableBlock> {
        * dynamic-length, in which case the gateway may return proofs for multiple slots in order for
        * the caller to be able to reconstruct the entire value.
        *
-       * Each command is a 32 byte value consisting of a single flags byte, followed by 31 instruction
-       * bytes. Valid flags are:
+       * Each command is a 32 byte value consisting of a single target byte, a single flags byte, followed by 30 instruction
+       * bytes. 
+       * 
+       * Valid targets are:
+       * - any decimal number that can fit into a single byte (max 255)
+       * 
+       * Valid flags are:
        *  - 0x01 - If set, the value to be returned is dynamic length.
        *
        * The VM implements a very simple stack machine, and instructions specify operations that happen on
@@ -165,22 +170,38 @@ export class EVMGateway<T extends ProvableBlock> {
 
       const targetAsInt = BigInt(target);
 
-      if (targetAsInt <= 256) {
+      console.log("target222", targetAsInt);
+
+      if (targetAsInt < 256) {
+
+        console.log("loool", allRequests.length);
 
         targetToUse = await (await allRequests[parseInt(targetAsInt.toString())]).value();
+
+        console.log("TTU", targetToUse);
+
+        //TODO tom decode the address here 
+        targetToUse = AbiCoder.defaultAbiCoder().decode(['address'], targetToUse)[0];
+
+        console.log("targetToUYse");
+        console.log(targetToUse);
       }
 
       !(targetToUse in requestsMap) && (requestsMap[targetToUse] = [])
 
-      requestsMap[targetToUse].push(
-        this.getValueFromPath(
-          block,
-          targetToUse,
-          command,
-          constants,
-          allRequests.slice()
-        )
+      const newRequest = this.getValueFromPath(
+        block,
+        targetToUse,
+        command,
+        constants,
+        allRequests.slice()
       );
+
+      requestsMap[targetToUse].push(
+        newRequest
+      );
+
+      allRequests.push(newRequest);
     }
 
     console.log("here1");
@@ -237,6 +258,8 @@ export class EVMGateway<T extends ProvableBlock> {
     const opcode = operation & 0xe0;
     const operand = operation & 0x1f;
 
+    console.log("OPERAND", operand);
+
     switch (opcode) {
       case OP_CONSTANT:
         return constants[operand];
@@ -253,6 +276,9 @@ export class EVMGateway<T extends ProvableBlock> {
       console.log("operandconst", constants[operand]);
       
         const [offset, length] = getBytes(constants[operand])
+
+        console.log(requests);
+
         const value = await (await requests[requests.length - 1]).value();
 
         console.log("vallllu", value);
@@ -285,8 +311,13 @@ export class EVMGateway<T extends ProvableBlock> {
       await this.executeOperation(commandWord[2], constants, requests)
     );
 
+    console.log("COM", command);
+
     // If there are multiple path elements, recursively hash them solidity-style to get the final slot.
     for (let j = 3; j < 32 && commandWord[j] != 0xff; j++) {
+
+      console.log("More path", commandWord[j]);
+
       const index = await this.executeOperation(
         commandWord[j],
         constants,
