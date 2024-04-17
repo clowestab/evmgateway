@@ -7,8 +7,12 @@ import { Address } from '@openzeppelin/contracts/utils/Address.sol';
 import './console.sol';
 
 interface IEVMGateway {
-    function getStorageSlots(address[] calldata targets, bytes32[] memory commands, bytes[] memory constants) external view returns(bytes memory witness);
+    function getStorageSlots(bytes32[] memory commands, bytes[] memory constants) external view returns(bytes memory witness);
 }
+
+uint8 constant T_CONSTANT = 0x00;   //00000000
+uint8 constant T_DYNAMIC = 0x80;    //10000000
+
 
 uint8 constant FLAG_DYNAMIC = 0x01;
 uint8 constant OP_CONSTANT = 0x00;
@@ -38,7 +42,6 @@ library EVMFetcher {
     struct EVMFetchRequest {
         IEVMVerifier verifier;
         uint8 currentTargetIndex;
-        address[] targets;
         bytes32[] commands;
         uint256 operationIdx;
         bytes[] constants;
@@ -54,14 +57,12 @@ library EVMFetcher {
     function newFetchRequest(IEVMVerifier verifier, address target) internal view returns (EVMFetchRequest memory) {
         bytes32[] memory commands = new bytes32[](MAX_COMMANDS);
         bytes[] memory constants = new bytes[](MAX_CONSTANTS);
-        address[] memory targets = new address[](MAX_COMMANDS);
         assembly {
             mstore(commands, 0) // Set current array length to 0
-            mstore(constants, 0)
-            mstore(targets, 1)
+            mstore(constants, 1)
         }        
-        targets[0] = target;
-        return EVMFetchRequest(verifier, 0, targets, commands, 0, constants);
+        constants[0] = abi.encodePacked(target);
+        return EVMFetchRequest(verifier, 0, commands, 0, constants);
     }
 
 
@@ -84,6 +85,8 @@ library EVMFetcher {
                     console.log("term 1");
 
             _addOperation(request, OP_END);
+
+            console.logBytes32(request.commands[0]);
         }
         assembly {
             mstore(commands, add(commandIdx, 1)) // Increment command array length
@@ -95,7 +98,8 @@ library EVMFetcher {
         request.operationIdx = 0;
                 console.log("1");
 
-        _addOperation(request, request.currentTargetIndex);
+        _addOperation(request, T_CONSTANT | request.currentTargetIndex);
+
                 console.log("2");
 
         _addOperation(request, 0);
@@ -136,7 +140,7 @@ library EVMFetcher {
         request.operationIdx = 0;
                 console.log("a");
 
-        _addOperation(request, request.currentTargetIndex);
+        _addOperation(request, T_CONSTANT | request.currentTargetIndex);
                 console.log("b");
 
         _addOperation(request, FLAG_DYNAMIC);
@@ -260,19 +264,15 @@ library EVMFetcher {
 
     function setTarget(EVMFetchRequest memory request, address newTarget) internal view returns (EVMFetchRequest memory) {
         
-        address[] memory targets = request.targets;
+        //request.operationIdx = 0;
 
-        //add the address to our request targets array
-        uint8 targetIdx = uint8(targets.length);
-        assembly {
-            mstore(targets, add(targetIdx, 1)) // Increment targets array length
-        }
-        targets[targetIdx] = newTarget;
-
-        request.currentTargetIndex = targetIdx;
+        request.currentTargetIndex = _addConstant(request, abi.encodePacked(newTarget));
+        //_addOperation(request, T_CONSTANT | request.currentTargetIndex);
 
         return request;
     }
+
+
 
 
     function setTargetRef(EVMFetchRequest memory request, uint8 idx) internal view returns (EVMFetchRequest memory) {
@@ -300,9 +300,9 @@ library EVMFetcher {
         revert OffchainLookup(
             address(this),
             request.verifier.gatewayURLs(),
-            abi.encodeCall(IEVMGateway.getStorageSlots, (request.targets, request.commands, request.constants)),
+            abi.encodeCall(IEVMGateway.getStorageSlots, (request.commands, request.constants)),
             EVMFetchTarget.getStorageSlotsCallback.selector,
-            abi.encode(request.verifier, request.targets, request.commands, request.constants, callbackId, callbackData)
+            abi.encode(request.verifier, request.commands, request.constants, callbackId, callbackData)
         );
     }
 

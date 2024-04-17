@@ -14,13 +14,12 @@ abstract contract EVMFetchTarget {
     using Address for address;
 
     error ResponseLengthMismatch(uint256 actual, uint256 expected);
-error Oops(uint8);
-error Resp(bytes);
+    error Oops(uint8);
+    error Resp(bytes);
     /**
      * @dev Internal callback function invoked by CCIP-Read in response to a `getStorageSlots` request.
      */
     function getStorageSlotsCallback(bytes calldata response, bytes calldata extradata) external {
-
 
         //bytes memory proofsDataBytes = abi.decode(response, (bytes));
         bytes[] memory proofsData = abi.decode(response, (bytes[]));
@@ -34,20 +33,20 @@ error Resp(bytes);
 //revert Resp(proofsDataBytes);
 
 //revert Oops(uint8(3));
-        (IEVMVerifier verifier, address[] memory targets, bytes32[] memory commands, bytes[] memory constants, bytes4 callback, bytes memory callbackData) =
-            abi.decode(extradata, (IEVMVerifier, address[], bytes32[], bytes[], bytes4, bytes));
+        (IEVMVerifier verifier, bytes32[] memory commands, bytes[] memory constants, bytes4 callback, bytes memory callbackData) =
+            abi.decode(extradata, (IEVMVerifier, bytes32[], bytes[], bytes4, bytes));
 
-            console.log("QQ1");
-        bytes[][] memory values = verifier.getStorageValues(targets, commands, constants, proofsData);
-            console.log("QQ2");
+        console.log("QQ1");
+        bytes[][] memory values = verifier.getStorageValues(commands, constants, proofsData);
+        console.log("QQ2");
 
                 //revert Oops(uint8(3));
 
-    console.log("val length");
-    console.log(values.length);
+        console.log("val length");
+        console.log(values.length);
 
-    console.log("commands length");
-    console.log(commands.length);
+        console.log("commands length");
+        console.log(commands.length);
 
         if(values.length != commands.length) {
             //This should move to helper and be renamed. as values in an array indexed by target so 2 commands, 1 target = 1 value key with 2 nested values
@@ -60,7 +59,7 @@ error Resp(bytes);
         bytes memory ret = address(this).functionCall(abi.encodeWithSelector(callback, values, callbackData));
         
 
-                console.log("ret");
+        console.log("ret");
         console.logBytes(ret);
         //revert Oops(uint8(1));
 

@@ -103,7 +103,24 @@ library EVMProofHelper {
             console.log("CONSTANT");
 
             //revert Problem(constants[operand]);
+
+            bytes memory thisConstant = constants[operand];
+
+                        bytes32 ist;
+
+            assembly {
+                ist := mload(add(thisConstant, 32))
+                //ist := shr(ist, 8)
+            }
+
+            bytes32 la = ist >> (256 - (8 * thisConstant.length));
+
+            return abi.encodePacked(la);
+
+
             return constants[operand];
+
+            
         } else if(opcode == OP_BACKREF) {
             return values[operand];
         } else if(opcode == OP_SLICE) {
@@ -227,17 +244,17 @@ console.log("slice 3");
         }
     }
 
-    function getStorageValues(address target, bytes32[] memory commands, uint8 cIdx, bytes[] memory constants, bytes32 stateRoot, StateProof memory proof) internal view returns(bytes[] memory values, uint8 nextCIdx) {
+    struct Command {
+        bytes32 com;
+        bytes1 tByte;
+        uint8 opcode;
+        uint8 operand;
+    }
+
+    function getStorageValues(bytes32[] memory commands, uint8 cIdx, bytes[] memory constants, bytes32 stateRoot, StateProof memory proof) internal view returns(bytes[] memory values, uint8 nextCIdx) {
        
-
-       console.log("GET STORAGE VALUES");
-       console.log(cIdx);
-       console.log("target");
-        console.log(target);
-
-        bytes32 storageRoot = getStorageRoot(stateRoot, target, proof.stateTrieWitness);
-        uint256 proofIdx = 0;
-        values = new bytes[](0);
+       //console.log("GET STORAGE VALUES");
+       //console.log(cIdx);
 
         console.log("commands length");
         console.log(commands.length);
@@ -246,31 +263,44 @@ console.log("slice 3");
         //console.logBytes32(commands[1]);
         //console.logBytes32(commands[2]);
 
-        uint8 tId = uint8(commands[cIdx][0]);
+        Command memory thisCommand;
+        thisCommand.com = commands[cIdx];
+        thisCommand.tByte = thisCommand.com[0];
+        thisCommand.opcode = uint8(thisCommand.com[0]) & 0xe0;
+        thisCommand.operand = uint8(thisCommand.com[0]) & 0x1f;
+
+        console.log("tOperand", thisCommand.operand);
+
+        address target = address(uint160(bytes20(constants[thisCommand.operand])));
+
+        bytes32 storageRoot = getStorageRoot(stateRoot, target, proof.stateTrieWitness);
+        uint256 proofIdx = 0;
+        values = new bytes[](0);
 
         uint8 valueIndex = 0;
 
         for(uint8 i = cIdx; i < commands.length; i++) {
 
+{
             nextCIdx = i;
 
             console.log("i");
             console.log(i);
 
-            bytes32 command = commands[i];
+            //bytes32 command = commands[i];
 
             //When the target id changes..
-            if (uint8(command[0]) != tId) {
+            if (commands[i][0] != thisCommand.tByte) {
 
                 console.log("break");
                 break;
             }
 
 
-            console.log("thisCommand");
-            console.logBytes32(command);
+            //console.log("thisCommand");
+            //console.logBytes32(command);
 
-            (bool isDynamic, uint256 slot) = computeFirstSlot(command, constants, values);
+            (bool isDynamic, uint256 slot) = computeFirstSlot(commands[i], constants, values);
             if(!isDynamic) {
 
                 console.log("storageRoot");
@@ -280,11 +310,11 @@ console.log("slice 3");
                 console.log(slot);
 
 
-                console.log("prooooof");
+                console.log("prooooof", proofIdx);
                 console.log(proof.storageProofs.length);
 
-                console.log(proof.storageProofs[proofIdx].length);
-                console.logBytes(proof.storageProofs[proofIdx][0]);
+                //console.log(proof.storageProofs[proofIdx].length);
+                //console.logBytes(proof.storageProofs[proofIdx][0]);
                 //console.logBytes(proof.storageProofs[proofIdx][1]);
                 //console.logBytes(proof.storageProofs[proofIdx][2]);
 
@@ -295,6 +325,8 @@ console.log("slice 3");
                     //mstore(values, add(i, 1)) // Increment values array length
                     mstore(values, add(valueIndex, 1)) // Increment values array length
                 }
+
+                console.log("TWOOO");
 
 
                 values[valueIndex] = abi.encode(getFixedValue(storageRoot, slot, proof.storageProofs[proofIdx]));
@@ -328,9 +360,9 @@ console.log("slice 3");
 
             valueIndex++;
 
-
             console.log("helper val len");
             console.log(values.length);
+}
         }
     }
 }

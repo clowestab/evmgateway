@@ -33,7 +33,7 @@ contract L1Verifier is IEVMVerifier {
         return _gatewayURLs;
     }
 
-    function getStorageValues(address[] memory targets, bytes32[] memory commands, bytes[] memory constants, bytes[] memory proofsData) external view returns(bytes[][] memory storageResults) {
+    function getStorageValues(bytes32[] memory commands, bytes[] memory constants, bytes[] memory proofsData) external view returns(bytes[][] memory storageResults) {
        
        //(uint256 count, (L1WitnessData memory l1Data, StateProof memory stateProof)[] proofs) = abi.decode(proof, (uint256, (L1WitnessData, StateProof)[]));
        //(bytes[] memory proofDatas) = abi.decode(proofsData, (bytes[]));
@@ -73,15 +73,15 @@ contract L1Verifier is IEVMVerifier {
             //console.log("Target");
             //console.log(targets[i]);
 
-            address targetToUse = targets[i];
+            //address targetToUse = targets[i];
 
-            if (uint160(targets[i]) <= 256) {
+            //if (uint160(targets[i]) <= 256) {
                 //console.log("hhhh");
                 //console.logBytes(storageResults[0][1]);
-                targetToUse = abi.decode(storageResults[0][1], (address));
-            }
+            //    targetToUse = abi.decode(storageResults[0][1], (address));
+            //}
 
-            (bytes[] memory values, uint8 nextCIdx) = EVMProofHelper.getStorageValues(targetToUse, commands, nextCIdxToUse, constants, stateRoot, stateProof);
+            (bytes[] memory values, uint8 nextCIdx) = EVMProofHelper.getStorageValues(commands, nextCIdxToUse, constants, stateRoot, stateProof);
             
             //console.log("State root");
             //console.logBytes(abi.encodePacked(stateRoot));

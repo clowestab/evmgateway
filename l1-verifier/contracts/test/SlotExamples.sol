@@ -22,6 +22,7 @@ contract SlotExamples is EVMFetchTarget {
     function getLatest() public view returns(uint256) {
         EVMFetcher.newFetchRequest(verifier, target)
             .getStatic(0)
+            //.setTarget(address(0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5))
             .fetch(this.getLatestCallback.selector, "");
     }
 

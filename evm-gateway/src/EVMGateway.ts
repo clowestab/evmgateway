@@ -102,17 +102,17 @@ export class EVMGateway<T extends ProvableBlock> {
        * The final result of this hashing operation is used as the base slot number for the storage
        * lookup. This mirrors Solidity's recursive hashing operation for determining storage slot locations.
        */
-      'function getStorageSlots(address[] calldata targets, bytes32[] memory commands, bytes[] memory constants) external view returns(bytes[] memory witnesses)',
+      'function getStorageSlots(bytes32[] memory commands, bytes[] memory constants) external view returns(bytes[] memory witnesses)',
     ];
     server.add(abi, [
       {
         type: 'getStorageSlots',
         func: async (args) => {
           try {
-            const [targets, commands, constants] = args;
+            const [commands, constants] = args;
 
             //Returns a hexadecimal encoded bytes[] of concatanated proofs
-            const concatanatedProofs = await this.createProofs(targets, commands, constants);
+            const concatanatedProofs = await this.createProofs(commands, constants);
 
             //console.log("concatanatedProofs", concatanatedProofs);
 
@@ -138,7 +138,6 @@ export class EVMGateway<T extends ProvableBlock> {
    *              See README.md for details of the encoding.
    */
   async createProofs(
-    targets: string[],
     commands: string[],
     constants: string[]
   ): Promise<string[]> {
@@ -157,6 +156,7 @@ export class EVMGateway<T extends ProvableBlock> {
       const commandWord = getBytes(command);
       const targetIndex = commandWord[0];
 
+      /*
       console.log("targetIndex", targetIndex);
       console.log("targets", targets);
       const target = targets[targetIndex];
@@ -186,18 +186,20 @@ export class EVMGateway<T extends ProvableBlock> {
         console.log("targetToUYse");
         console.log(targetToUse);
       }
+*/
 
-      !(targetToUse in requestsMap) && (requestsMap[targetToUse] = [])
 
-      const newRequest = this.getValueFromPath(
+
+      const [newRequest, target] = await this.getValueFromPath(
         block,
-        targetToUse,
         command,
         constants,
         allRequests.slice()
       );
 
-      requestsMap[targetToUse].push(
+      !(target in requestsMap) && (requestsMap[target] = [])
+
+      requestsMap[target].push(
         newRequest
       );
 
@@ -374,22 +376,29 @@ export class EVMGateway<T extends ProvableBlock> {
 
   private async getValueFromPath(
     block: T,
-    target: string,
     command: string,
     constants: string[],
     requests: Promise<StorageElement>[]
-  ): Promise<StorageElement> {
+  ): Promise<[Promise<StorageElement>, string]> {
+
+    const commandWord = getBytes(command);
+    const targetData = commandWord[0];
+
+    const tType = targetData & 0xe0;
+    const tOperand = targetData & 0x1f; //00011111
 
     const { slot, isDynamic } = await this.computeFirstSlot(
       command,
       constants,
       requests
     );
+    
+    const target = constants[tOperand];
 
-    var storageElement = null;
+    var storageElement: Promise<StorageElement>;
 
     if (!isDynamic) {
-      storageElement = {
+      storageElement = Promise.resolve({
         slots: [slot],
         isDynamic,
         value: memoize(async () => {
@@ -404,11 +413,11 @@ export class EVMGateway<T extends ProvableBlock> {
           )
         }
         ),
-      };
+      });
     } else {
       storageElement = this.getDynamicValue(block, target, slot);
     }
 
-    return storageElement;
+    return [storageElement, target];
   }
 }

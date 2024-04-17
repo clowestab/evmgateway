@@ -116,7 +116,7 @@ describe('L1Verifier', () => {
   });
 
   //DONE
-  it('get two static values from two different targets', async () => {
+  it.only('get two static values from two different targets', async () => {
 
     //try {
 
@@ -124,9 +124,14 @@ describe('L1Verifier', () => {
 
       console.log("result", result);
       const decodedResult = AbiCoder.defaultAbiCoder().decode(['uint256'], result[0][0]);
+      const decodedResultTwo = AbiCoder.defaultAbiCoder().decode(['uint256'], result[1][0]);
       
       expect(decodedResult[0]).to.equal(
         49n
+      );
+
+      expect(decodedResultTwo[0]).to.equal(
+        42n
       );
 
     //  } catch (e) {
@@ -235,7 +240,7 @@ describe('L1Verifier', () => {
   });
   
   //
-  it.only('get an address by slicing part of a previously fetched value', async () => {
+  it('get an address by slicing part of a previously fetched value', async () => {
 
     //try {
     const result = await target.getValueFromAddressFromRef({ enableCcipRead: true });
