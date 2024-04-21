@@ -98,8 +98,9 @@ contract SlotExamples is EVMFetchTarget {
     function getHighscorerFromRefSlice() public view returns(string memory) {
         EVMFetcher.newFetchRequest(verifier, target)
             .getStatic(6)
-            .getDynamic(3)
                 .refSlice(0, 2, 1)
+            .getDynamic(3)
+                .pref(0)
             .fetch(this.getHighscorerFromRefSliceCallback.selector, "");
     }
 
@@ -111,11 +112,58 @@ contract SlotExamples is EVMFetchTarget {
     }
 
 
+
+    function getPaddedAddress() public view returns(bytes memory) {
+        EVMFetcher.newFetchRequest(verifier, target)
+            .getStatic(7)
+            .fetch(this.getPaddedAddressCallback.selector, "");
+    }
+
+    function getPaddedAddressCallback(bytes[][] memory values, bytes memory) public pure returns(bytes memory) {
+        return values[0][0];
+    }
+
+    function getSlicedPaddedAddress() public view returns(bytes memory) {
+        EVMFetcher.newFetchRequest(verifier, target)
+            //.getStatic(7)
+            .getStatic(7)
+                .refSlice(0, 8, 20)
+            .getDynamic(8)
+                .pref(0)
+            .fetch(this.getSlicedPaddedAddressCallback.selector, "");
+    }
+
+    function getSlicedPaddedAddressCallback(bytes[][] memory values, bytes memory) public view returns(bytes memory) {
+
+        console.log("VALUES");
+        console.logBytes(values[0][0]);
+        console.logBytes(values[0][1]);
+
+        return values[0][1];
+    }
+
+
+    function memoryArrays(bytes[] memory input) public view returns (bytes[] memory output){
+        
+        console.log("Input length", input.length);
+        console.log("Output length", output.length);
+
+        assembly {
+            mstore(output, 2)
+        }
+
+        output[1] = "0x00";
+
+        console.log("Output length2", output.length);
+
+    }
+
     function getAddressFromRefSlice() public view returns(string memory) {
         EVMFetcher.newFetchRequest(verifier, target)
             .getStatic(7)
-            .getDynamic(8)
                 .refSlice(0, 8, 20)
+            .getDynamic(8)
+                .pref(0)
             .fetch(this.getAddressFromRefSliceCallback.selector, "");
     }
 
@@ -126,9 +174,8 @@ contract SlotExamples is EVMFetchTarget {
 
     function getValueFromAddressFromRef() public view returns(uint256) {
         EVMFetcher.newFetchRequest(verifier, target)
-            .getStatic(7)
             .getStatic(11)
-            .setTargetRef(1)
+            .setTargetRef(0)
             .getStatic(0)
             .fetch(this.getValueFromAddressFromRefCallback.selector, "");
     }

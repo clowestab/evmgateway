@@ -10,15 +10,20 @@ interface IEVMGateway {
     function getStorageSlots(bytes32[] memory commands, bytes[] memory constants) external view returns(bytes memory witness);
 }
 
-uint8 constant T_CONSTANT = 0x00;   //00000000
-uint8 constant T_DYNAMIC = 0x80;    //10000000
+uint8 constant TOP_CONSTANT = 0x00;   //00000000
+uint8 constant TOP_BACKREF = 0x20;    //
 
 
+uint8 constant FLAG_STATIC = 0x01;
 uint8 constant FLAG_DYNAMIC = 0x01;
+uint8 constant FLAG_SLICE = 0x01;
 uint8 constant OP_CONSTANT = 0x00;
 uint8 constant OP_BACKREF = 0x20;
 uint8 constant OP_SLICE = 0x40;
 uint8 constant OP_SETADDR = 0x60;
+uint8 constant OP_IVALUE = 0x80;
+
+uint8 constant OP_POSTPROCESS = 0xfe;
 uint8 constant OP_END = 0xff;
 
 
@@ -42,6 +47,7 @@ library EVMFetcher {
     struct EVMFetchRequest {
         IEVMVerifier verifier;
         uint8 currentTargetIndex;
+        uint8 currentTargetByte;
         bytes32[] commands;
         uint256 operationIdx;
         bytes[] constants;
@@ -62,7 +68,7 @@ library EVMFetcher {
             mstore(constants, 1)
         }        
         constants[0] = abi.encodePacked(target);
-        return EVMFetchRequest(verifier, 0, commands, 0, constants);
+        return EVMFetchRequest(verifier, 0, 0, commands, 0, constants);
     }
 
 
@@ -98,7 +104,9 @@ library EVMFetcher {
         request.operationIdx = 0;
                 console.log("1");
 
-        _addOperation(request, T_CONSTANT | request.currentTargetIndex);
+
+        //_addOperation(request, T_CONSTANT | request.currentTargetIndex);
+        _addOperation(request, request.currentTargetByte);
 
                 console.log("2");
 
@@ -108,6 +116,9 @@ library EVMFetcher {
         _addOperation(request, _addConstant(request, abi.encode(baseSlot)));
         return request;
     }
+
+
+
 
     /**
      * @dev Starts describing a new fetch request.
@@ -140,7 +151,8 @@ library EVMFetcher {
         request.operationIdx = 0;
                 console.log("a");
 
-        _addOperation(request, T_CONSTANT | request.currentTargetIndex);
+        _addOperation(request, request.currentTargetByte);
+        //_addOperation(request, T_CONSTANT | request.currentTargetIndex);
                 console.log("b");
 
         _addOperation(request, FLAG_DYNAMIC);
@@ -243,6 +255,24 @@ library EVMFetcher {
     }
 
 
+    /**
+     * @dev Adds a reference to a previous fetch to the current path.
+     * @param request The request object being operated on.
+     * @param idx The index of the previous fetch request, starting at 0.
+     */
+    function pref(EVMFetchRequest memory request, uint8 idx) internal view returns (EVMFetchRequest memory) {
+        if(request.operationIdx >= 32) {
+            revert CommandTooLong();
+        }
+        if(idx > request.commands.length || idx > 31) {
+            revert InvalidReference(idx, request.commands.length);
+        }
+        console.log("ref");
+        _addOperation(request, OP_IVALUE | idx);
+        return request;
+    }
+
+
     function refSlice(EVMFetchRequest memory request, uint8 idx, uint8 offset, uint8 length) internal view returns (EVMFetchRequest memory) {
         if(request.operationIdx >= 32) {
             revert CommandTooLong();
@@ -251,6 +281,8 @@ library EVMFetcher {
             revert InvalidReference(idx, request.commands.length);
         }
         console.log("..pack");
+
+        _addOperation(request, OP_POSTPROCESS);
 
         bytes memory pack = abi.encodePacked(offset, length);
         console.logBytes(pack);
@@ -277,9 +309,11 @@ library EVMFetcher {
 
     function setTargetRef(EVMFetchRequest memory request, uint8 idx) internal view returns (EVMFetchRequest memory) {
         
-        address fakeAddress = address(uint160(bytes20(bytes1(idx)) >> (152)));
+        request.currentTargetByte = TOP_BACKREF | idx;
 
-        return setTarget(request, fakeAddress);
+        console.log("byteis",request.currentTargetByte);
+
+        return request;
     }
 
     /**
@@ -297,6 +331,10 @@ library EVMFetcher {
             console.log("last");
             _addOperation(request, OP_END);
         }
+
+        console.log("clen", request.commands.length);
+        //console.logBytes32(request.commands[0]);
+        //console.logBytes32(request.commands[1]);
         revert OffchainLookup(
             address(this),
             request.verifier.gatewayURLs(),

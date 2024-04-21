@@ -83,7 +83,7 @@ export class EVMProofHelper {
 
     console.log("lol");
 
-    console.log(proofs.storageProof);
+    console.log(proofs);
 
     return {
       stateTrieWitness: proofs.accountProof,

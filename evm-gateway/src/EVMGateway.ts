@@ -13,9 +13,14 @@ import {
 import type { IProofService, ProvableBlock } from './IProofService.js';
 import { AbiCoder } from 'ethers';
 
+const TOP_CONSTANT = 0x00;   //00000000
+const TOP_BACKREF = 0x20;
+
 const OP_CONSTANT = 0x00;
 const OP_BACKREF = 0x20;
 const OP_SLICE = 0x40;
+const OP_IVALUE = 0x80;
+
 //const OP_SETADDR = 0x60;
 
 export enum StorageLayout {
@@ -147,8 +152,9 @@ export class EVMGateway<T extends ProvableBlock> {
 
     console.log("WTF", block);
 
-    const allRequests: Promise<StorageElement>[] = [];
-    const requestsMap: {[key: string]: Promise<StorageElement>[]} = {};
+    const allRequests: StorageElement[] = [];
+    const internalValues: string[] = [];
+    const requestsMap: {[key: string]: StorageElement[]} = {};
     // For each request, spawn a promise to compute the set of slots required
     for (let i = 0; i < commands.length; i++) {
 
@@ -188,14 +194,15 @@ export class EVMGateway<T extends ProvableBlock> {
       }
 */
 
-
-
-      const [newRequest, target] = await this.getValueFromPath(
+      const [newRequest, newIValues, target] = await this.getValueFromPath(
         block,
         command,
         constants,
-        allRequests.slice()
+        allRequests,
+        internalValues
       );
+
+      console.log("RETURNSD", newIValues);
 
       !(target in requestsMap) && (requestsMap[target] = [])
 
@@ -204,6 +211,8 @@ export class EVMGateway<T extends ProvableBlock> {
       );
 
       allRequests.push(newRequest);
+
+      internalValues.push(...newIValues);
     }
 
     console.log("here1");
@@ -232,7 +241,7 @@ export class EVMGateway<T extends ProvableBlock> {
     */
 
     const res = await Promise.all(proofArray);
-    console.log("lil", res);
+    //console.log("lil", res);
 
     return res;
 
@@ -255,7 +264,8 @@ export class EVMGateway<T extends ProvableBlock> {
   private async executeOperation(
     operation: number,
     constants: string[],
-    requests: Promise<StorageElement>[]
+    requests: StorageElement[],
+    internalValues: string[]
   ): Promise<string> {
     const opcode = operation & 0xe0;
     const operand = operation & 0x1f;
@@ -272,6 +282,14 @@ export class EVMGateway<T extends ProvableBlock> {
 
         return backref;
 
+      case OP_IVALUE:
+        const iValue = internalValues[operand];
+
+        console.log("internalValues", internalValues);
+        console.log("iValue", iValue);
+
+        return iValue;
+
       //Returns sliced data from the previous requests value and uses it as an index
       case OP_SLICE:
 
@@ -287,7 +305,7 @@ export class EVMGateway<T extends ProvableBlock> {
 
         const parsedValue = hexlify(getBytes(value).slice(offset, offset + length));
 
-        //console.log("PARSED", parsedValue);
+        console.log("PARSED", parsedValue);
 
         const paddedParsed = zeroPadValue(parsedValue, 32);
 
@@ -296,34 +314,46 @@ export class EVMGateway<T extends ProvableBlock> {
         return paddedParsed;
 
       default:
-        throw new Error('Unrecognized opcodse ' + opcode);
+        throw new Error('Unrecognized opcode ' + opcode);
     }
   }
 
   private async computeFirstSlot(
     command: string,
     constants: string[],
-    requests: Promise<StorageElement>[]
-  ): Promise<{ slot: bigint; isDynamic: boolean }> {
+    requests: StorageElement[],
+    internalValues: string[]
+  ): Promise<[{ slot: bigint; isDynamic: boolean }, number | null]> {
     const commandWord = getBytes(command);
     const flags = commandWord[1];
     const isDynamic = (flags & 0x01) != 0;
 
     let slot = toBigInt(
-      await this.executeOperation(commandWord[2], constants, requests)
+      await this.executeOperation(commandWord[2], constants, requests, internalValues)
     );
 
+    let postProcessIndex = null;
     console.log("COM", command);
 
     // If there are multiple path elements, recursively hash them solidity-style to get the final slot.
-    for (let j = 3; j < 32 && commandWord[j] != 0xff; j++) {
+    for (let j = 3; j < 32; j++) {
+
+      if (commandWord[j] == 0xfe) {
+        postProcessIndex = j;
+        break;
+      }
+
+      if (commandWord[j] == 0xff) {
+        break;
+      }
 
       console.log("More path", commandWord[j]);
 
       const index = await this.executeOperation(
         commandWord[j],
         constants,
-        requests
+        requests,
+        internalValues
       );
       slot = toBigInt(
         solidityPackedKeccak256(['bytes', 'uint256'], [index, slot])
@@ -332,7 +362,7 @@ export class EVMGateway<T extends ProvableBlock> {
 
     console.log("SLOTs", slot);
 
-    return { slot, isDynamic };
+    return [{ slot, isDynamic }, postProcessIndex];
   }
 
   private async getDynamicValue(
@@ -378,8 +408,9 @@ export class EVMGateway<T extends ProvableBlock> {
     block: T,
     command: string,
     constants: string[],
-    requests: Promise<StorageElement>[]
-  ): Promise<[Promise<StorageElement>, string]> {
+    requests: StorageElement[],
+    internalValues: string[]
+  ): Promise<[StorageElement, string[], string]> {
 
     const commandWord = getBytes(command);
     const targetData = commandWord[0];
@@ -387,13 +418,30 @@ export class EVMGateway<T extends ProvableBlock> {
     const tType = targetData & 0xe0;
     const tOperand = targetData & 0x1f; //00011111
 
-    const { slot, isDynamic } = await this.computeFirstSlot(
+    const [{ slot, isDynamic }, postProcessIndex] = await this.computeFirstSlot(
       command,
       constants,
-      requests
+      requests, 
+      internalValues
     );
     
-    const target = constants[tOperand];
+    console.log("postProcessIndex", postProcessIndex);
+
+    var target: any = null;
+
+    console.log("rLength", requests.length);
+    if (tType == TOP_CONSTANT) {
+      target = constants[tOperand];
+    } if (tType == TOP_BACKREF) {
+      target = await requests[0].value();
+      target = AbiCoder.defaultAbiCoder().decode(['address'], target)[0];
+      console.log("targ her", target);
+
+    } else {
+      throw new Error('Unrecognized target type');
+    }
+
+    console.log("targ", target);
 
     var storageElement: Promise<StorageElement>;
 
@@ -418,6 +466,78 @@ export class EVMGateway<T extends ProvableBlock> {
       storageElement = this.getDynamicValue(block, target, slot);
     }
 
-    return [storageElement, target];
+    let newIValues: string[] = [];
+
+    if (postProcessIndex != null) {
+
+      //The operations start after the 0xfe separator
+      const ppOps = commandWord.slice(postProcessIndex + 1);
+
+      console.log("111");
+      newIValues = await this.postProcessValue((await storageElement), ppOps, constants);
+    }
+
+    console.log("HEYRE");
+
+    return [(await storageElement), newIValues, target];
+  }
+
+  private async postProcessValue(
+    request: StorageElement,
+    ppOps: Uint8Array,
+    constants: string[],
+  ): Promise<string[]> {
+  
+    console.log("ppOps", ppOps);
+
+    const ppValues: string[] = [];
+
+    for (let k = 0; k < 32; k++) {
+
+      const operation = ppOps[k];
+
+      if (operation == 0xff) {
+        break;
+      }
+
+      const opcode = operation & 0xe0;
+      const operand = operation & 0x1f;
+
+      console.log("pOPERAND", operand);
+
+
+      switch (opcode) {
+
+
+        //Returns sliced data from the previous requests value and uses it as an index
+        case OP_SLICE:
+
+          console.log("poperandconst", constants[operand]);
+        
+          const [offset, length] = getBytes(constants[operand])
+
+          console.log(request);
+
+          const value = await (await request).value();
+
+          console.log("Pvallllu", value);
+
+          const parsedValue = hexlify(getBytes(value).slice(offset, offset + length));
+
+          console.log("PPARSED", parsedValue);
+
+          const paddedParsed = zeroPadValue(parsedValue, 32);
+
+          console.log("PpaddedParsed", paddedParsed);
+
+          ppValues.push(paddedParsed);
+          break;
+
+        default:
+          throw new Error('Unrecognized post processing opcode ' + opcode);
+      }
+    }
+
+    return ppValues;
   }
 }

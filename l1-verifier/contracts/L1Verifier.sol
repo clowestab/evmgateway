@@ -16,6 +16,9 @@ struct ProofData {
     bytes blockHeader;
 }
 
+uint8 constant TOP_CONSTANT = 0x00;
+uint8 constant TOP_BACKREF = 0x20;
+
 contract L1Verifier is IEVMVerifier {
     error BlockHeaderHashMismatch(uint256 current, uint256 number, bytes32 expected, bytes32 actual);
     
@@ -33,8 +36,27 @@ contract L1Verifier is IEVMVerifier {
         return _gatewayURLs;
     }
 
+
+    struct Command {
+        bytes32 command;
+        bytes1 targetByte;
+        uint8 opcode;
+        uint8 operand;
+        uint256 cLength;
+        address target;
+    }
+
+
+    /**
+     * The 3668 callback calls through to this method on the verifier to get proven values
+     */
     function getStorageValues(bytes32[] memory commands, bytes[] memory constants, bytes[] memory proofsData) external view returns(bytes[][] memory storageResults) {
        
+        //storageResults is a multidimensional array of values indexed on target
+        //There is a proof for each target so we initalize the array with that length to avoid playing in assembly (which was blowing up)
+        storageResults = new bytes[][](proofsData.length);
+
+        console.log("prii", proofsData.length);
        //(uint256 count, (L1WitnessData memory l1Data, StateProof memory stateProof)[] proofs) = abi.decode(proof, (uint256, (L1WitnessData, StateProof)[]));
        //(bytes[] memory proofDatas) = abi.decode(proofsData, (bytes[]));
 
@@ -81,8 +103,29 @@ contract L1Verifier is IEVMVerifier {
             //    targetToUse = abi.decode(storageResults[0][1], (address));
             //}
 
-            (bytes[] memory values, uint8 nextCIdx) = EVMProofHelper.getStorageValues(commands, nextCIdxToUse, constants, stateRoot, stateProof);
+        Command memory firstCommand;
+        firstCommand.command = commands[nextCIdxToUse];
+        firstCommand.targetByte = firstCommand.command[0];
+        firstCommand.opcode = uint8(firstCommand.command[0]) & 0xe0;
+        firstCommand.operand = uint8(firstCommand.command[0]) & 0x1f;
+        firstCommand.cLength = commands.length;
+        firstCommand.target = address(uint160(bytes20(constants[firstCommand.operand])));
+
+        if (firstCommand.opcode == TOP_BACKREF) {
+
+//console.logBytes(storageResults[0][0]);
+                    //TOM TODO make this a reference to the correct result
+                    firstCommand.target = abi.decode(storageResults[0][0], (address));
+
+                    console.log("use this1", firstCommand.target);
+
+
+        }
+
+            (bytes[] memory values, uint8 nextCIdx) = EVMProofHelper.getStorageValues(firstCommand.target, commands, nextCIdxToUse, constants, stateRoot, stateProof);
             
+
+            //console.log("poost2", values.length);
             //console.log("State root");
             //console.logBytes(abi.encodePacked(stateRoot));
 
@@ -101,15 +144,21 @@ contract L1Verifier is IEVMVerifier {
             //console.log("stateProof");
             //console.logBytes(stateProof.stateTrieWitness[0]);
 
+            //console.log("poost3", values.length);
+
+            
             assembly {
+                //This was blowing up
                 //mstore(storageResults, add(i, 1)) // Increment command array length
-                mstore(storageResults, add(i, 1)) // Increment command array length
             }
+
 
             storageResults[i] = values;
 
-            console.log("resulti");
-            console.log(values.length);
+            //console.log("resulti");
+            //console.log(storageResults.length);
+            //console.log(storageResults[i].length);
+
 
             if (i == 1) {
                 //console.logBytes(values[0]);
@@ -121,8 +170,13 @@ contract L1Verifier is IEVMVerifier {
 
         }
 
+            console.log("resultEND");
+
+            console.logBytes(storageResults[0][0]);
+            //console.logBytes(storageResults[1][0]);
+
     bytes memory rw = storageResults[0][0];
-        console.log("qq1");
+        //console.log("qq1");
                     //console.logBytes(rw);
 
                                     //revert Oops(uint8(6));
