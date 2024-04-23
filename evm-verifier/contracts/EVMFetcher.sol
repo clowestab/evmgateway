@@ -274,18 +274,13 @@ library EVMFetcher {
 
     /**
      * @dev slices a previously requested value and stores it internally
-     * @param idx the index of the value to slice
      * @param offset the offset from which to slice
      * @param length the length to slice
      */
-    function refSlice(EVMFetchRequest memory request, uint8 idx, uint8 offset, uint8 length) internal view returns (EVMFetchRequest memory) {
+    function refSlice(EVMFetchRequest memory request, uint8 offset, uint8 length) internal view returns (EVMFetchRequest memory) {
         if(request.operationIdx >= 32) {
             revert CommandTooLong();
         }
-        if(idx > request.commands.length || idx > 31) {
-            revert InvalidReference(idx, request.commands.length);
-        }
-        console.log("..pack");
 
         _addOperation(request, OP_POSTPROCESS);
 

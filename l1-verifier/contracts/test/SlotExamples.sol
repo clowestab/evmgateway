@@ -90,7 +90,7 @@ contract SlotExamples is EVMFetchTarget {
     function getHighscorerFromRefSlice() public view returns(string memory) {
         EVMFetcher.newFetchRequest(verifier, target)
             .getStatic(6)
-                .refSlice(0, 2, 1)
+                .refSlice(2, 1)
             .getDynamic(3)
                 .iref(0)
             .fetch(this.getHighscorerFromRefSliceCallback.selector, "");
@@ -118,7 +118,7 @@ contract SlotExamples is EVMFetchTarget {
     function getStringBytesUsingAddressSlicedFromBytes() public view returns(bytes memory) {
         EVMFetcher.newFetchRequest(verifier, target)
             .getStatic(7)
-                .refSlice(0, 8, 20)
+                .refSlice(8, 20)
             .getDynamic(8)
                 .iref(0)
             .fetch(this.getStringBytesUsingAddressSlicedFromBytesCallback.selector, "");
@@ -147,7 +147,7 @@ contract SlotExamples is EVMFetchTarget {
     function getValueFromAddressFromRefSlice() public view returns(uint256) {
         EVMFetcher.newFetchRequest(verifier, target)
             .getStatic(7) //gets a padded address values[0][0]
-                .refSlice(0, 8, 20) //slices the address out to an internal value
+                .refSlice(8, 20) //slices the address out to an internal value
             .setTargetIref(0)
             .getStatic(0)
             .fetch(this.getValueFromAddressFromRefSliceCallback.selector, "");

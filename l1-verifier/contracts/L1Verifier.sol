@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import { IEVMVerifier } from "@ensdomains/evm-verifier/contracts/IEVMVerifier.sol";
 import { RLPReader } from "@eth-optimism/contracts-bedrock/src/libraries/rlp/RLPReader.sol";
-import { StateProof, EVMProofHelper } from "@ensdomains/evm-verifier/contracts/EVMProofHelper.sol";
+import { StateProof, CommandData, EVMProofHelper } from "@ensdomains/evm-verifier/contracts/EVMProofHelper.sol";
 import "./console.sol";
 
 struct L1WitnessData {
@@ -16,6 +16,13 @@ struct ProofData {
     bytes blockHeader;
 }
 
+struct ProcessData {
+    uint8 nextCIdxToUse;
+    bytes[] internalValues;
+    RLPReader.RLPItem[] headerFields;
+    address target;
+}
+
 uint8 constant TOP_CONSTANT = 0x00;
 uint8 constant TOP_BACKREF = 0x20;
 uint8 constant TOP_INTERNALREF = 0x40;
@@ -23,10 +30,6 @@ uint8 constant TOP_INTERNALREF = 0x40;
 contract L1Verifier is IEVMVerifier {
     error BlockHeaderHashMismatch(uint256 current, uint256 number, bytes32 expected, bytes32 actual);
     
-    error Problem(bytes);
-    error Oops(uint8);
-
-
     string[] _gatewayURLs;
 
     constructor(string[] memory urls) {
@@ -37,23 +40,6 @@ contract L1Verifier is IEVMVerifier {
         return _gatewayURLs;
     }
 
-
-    struct Command {
-        bytes32 command;
-        bytes1 targetByte;
-        uint8 opcode;
-        uint8 operand;
-        uint256 cLength;
-        address target;
-        RLPReader.RLPItem[] headerFields;
-    }
-
-    struct ParseState {
-
-        uint8 nextCIdxToUse;
-        bytes[] internalValues;
-    }
-
     /**
      * The 3668 callback calls through to this method on the verifier to get proven values
      */
@@ -62,148 +48,54 @@ contract L1Verifier is IEVMVerifier {
         //storageResults is a multidimensional array of values indexed on target
         //There is a proof for each target so we initalize the array with that length to avoid playing in assembly (which was blowing up)
         storageResults = new bytes[][](proofsData.length);
-
-        console.log("prii", proofsData.length);
-       //(uint256 count, (L1WitnessData memory l1Data, StateProof memory stateProof)[] proofs) = abi.decode(proof, (uint256, (L1WitnessData, StateProof)[]));
-       //(bytes[] memory proofDatas) = abi.decode(proofsData, (bytes[]));
-
-                                //revert Oops(uint8(3));
-
-        //console.log("proof length");
-        //console.log(proofsData.length);
         
+        ProcessData memory pData;
+        pData.nextCIdxToUse = 0;
         
-        ParseState memory pState;
-        pState.nextCIdxToUse = 0;
-        
-
         for (uint256 i = 0; i < proofsData.length; i++) {
 
-            //console.log("III");
-            //console.log(i);
-
-            //revert Problem(proofsData[0]);
-
-//so we have an array of proofs which are of the form
-        //[
-        //'tuple(uint256 blockNo, bytes blockHeader)',
-        //'tuple(bytes[] stateTrieWitness, bytes[][] storageProofs)',
-        //]
+            //so we have an array of proofs which are of the form
+            //[
+            //'tuple(uint256 blockNo, bytes blockHeader)',
+            //'tuple(bytes[] stateTrieWitness, bytes[][] storageProofs)',
+            //]
 
             (L1WitnessData memory l1Data, StateProof memory stateProof) = abi.decode(proofsData[i], (L1WitnessData, StateProof));
-
-            //(uint256 count, (L1WitnessData memory l1Data, StateProof memory stateProof)[] proofs) = abi.decode(proofDatas[i], (uint256, (L1WitnessData, StateProof)[]));
-
-//revert Oops(uint8(l1Data.blockNo));
 
             if(keccak256(l1Data.blockHeader) != blockhash(l1Data.blockNo)) {
                 revert BlockHeaderHashMismatch(block.number, l1Data.blockNo, blockhash(l1Data.blockNo), keccak256(l1Data.blockHeader));
             }
 
-                    Command memory firstCommand;
-        firstCommand.command = commands[pState.nextCIdxToUse];
-        firstCommand.targetByte = firstCommand.command[0];
-        firstCommand.opcode = uint8(firstCommand.command[0]) & 0xe0;
-        firstCommand.operand = uint8(firstCommand.command[0]) & 0x1f;
-        firstCommand.cLength = commands.length;
-        firstCommand.target = address(uint160(bytes20(constants[firstCommand.operand])));
-
-            firstCommand.headerFields = RLPReader.readList(l1Data.blockHeader);
-            bytes32 stateRoot = bytes32(RLPReader.readBytes(firstCommand.headerFields[3]));
+            CommandData memory firstCommand;
+            firstCommand.command = commands[pData.nextCIdxToUse];
+            firstCommand.tByte = firstCommand.command[0];
+            firstCommand.tOpcode = uint8(firstCommand.tByte) & 0xe0;
+            firstCommand.tOperand = uint8(firstCommand.tByte) & 0x1f;
+            pData.headerFields = RLPReader.readList(l1Data.blockHeader);
+            bytes32 stateRoot = bytes32(RLPReader.readBytes(pData.headerFields[3]));
             
-            //console.log("Target");
-            //console.log(targets[i]);
+            if (firstCommand.tOpcode == TOP_CONSTANT) {
 
-            //address targetToUse = targets[i];
+                pData.target = address(uint160(bytes20(constants[firstCommand.tOperand])));
 
-            //if (uint160(targets[i]) <= 256) {
-                //console.log("hhhh");
-                //console.logBytes(storageResults[0][1]);
-            //    targetToUse = abi.decode(storageResults[0][1], (address));
-            //}
+            } else if (firstCommand.tOpcode == TOP_BACKREF) {
 
+                //TOM TODO make this a reference to the correct result
+                pData.target = abi.decode(storageResults[0][0], (address));
 
+            } else if (firstCommand.tOpcode == TOP_INTERNALREF) {
 
-        if (firstCommand.opcode == TOP_BACKREF) {
-
-            //console.logBytes(storageResults[0][0]);
-            //TOM TODO make this a reference to the correct result
-            firstCommand.target = abi.decode(storageResults[0][0], (address));
-
-            //console.log("use this1", firstCommand.target);
-
-
-        } else if (firstCommand.opcode == TOP_INTERNALREF) {
-
-            console.log("IB");
-            console.logBytes(pState.internalValues[0]);
-            //TOM TODO make this a reference to the correct result
-            firstCommand.target = abi.decode(pState.internalValues[0], (address));
-
-            //console.log("use this1B", firstCommand.target);
-        }
-
-{
-            (bytes[] memory values, bytes[] memory internalValues, uint8 nextCIdx) = EVMProofHelper.getStorageValues(firstCommand.target, commands, pState.nextCIdxToUse, constants, stateRoot, stateProof);
-            
-            pState.internalValues = internalValues;
-            //console.log("poost2", values.length);
-            //console.log("State root");
-            //console.logBytes(abi.encodePacked(stateRoot));
-
-            //console.log("Block Number");
-            //console.log(l1Data.blockNo);
-
-            //console.log("Target");
-            //console.log(targets[i]);
-
-            //console.log("Commands");
-            //console.logBytes32(commands[0]);
-
-            //console.log("constants");
-            //console.logBytes(constants[0]);
-
-            //console.log("stateProof");
-            //console.logBytes(stateProof.stateTrieWitness[0]);
-
-            //console.log("poost3", values.length);
-
-            
-            assembly {
-                //This was blowing up
-                //mstore(storageResults, add(i, 1)) // Increment command array length
+                //TOM TODO make this a reference to the correct result
+                pData.target = abi.decode(pData.internalValues[firstCommand.tOperand], (address));
             }
 
-
+            (bytes[] memory values, bytes[] memory internalValues, uint8 nextCIdx) = EVMProofHelper.getStorageValues(pData.target, commands, pData.nextCIdxToUse, constants, stateRoot, stateProof);
+            
+            pData.internalValues = internalValues;
+            
             storageResults[i] = values;
 
-            //console.log("resulti");
-            //console.log(storageResults.length);
-            //console.log(storageResults[i].length);
-
-
-            if (i == 1) {
-                //console.logBytes(values[0]);
-            }
-            pState.nextCIdxToUse = nextCIdx;
-
-            //console.log("nextCIdxToUse");
-            //console.log(nextCIdxToUse);
-
-}
-
+            pData.nextCIdxToUse = nextCIdx;
         }
-
-            console.log("resultEND");
-
-            console.logBytes(storageResults[0][0]);
-            //console.logBytes(storageResults[1][0]);
-
-    //bytes memory rw = storageResults[0][0];
-        //console.log("qq1");
-                    //console.logBytes(rw);
-
-                                    //revert Oops(uint8(6));
-        //return storageResults;
     }
 }

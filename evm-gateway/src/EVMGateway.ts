@@ -160,40 +160,6 @@ export class EVMGateway<T extends ProvableBlock> {
     for (let i = 0; i < commands.length; i++) {
 
       const command = commands[i];
-      const commandWord = getBytes(command);
-      const targetIndex = commandWord[0];
-
-      /*
-      console.log("targetIndex", targetIndex);
-      console.log("targets", targets);
-      const target = targets[targetIndex];
-
-
-      console.log("target111", target);
-
-      //00000001
-      //const hasStaticTarget = (targetFlag & 0xFF) != 0;
-      var targetToUse = target;
-
-      const targetAsInt = BigInt(target);
-
-      console.log("target222", targetAsInt);
-
-      if (targetAsInt < 256) {
-
-        console.log("loool", allRequests.length);
-
-        targetToUse = await (await allRequests[parseInt(targetAsInt.toString())]).value();
-
-        console.log("TTU", targetToUse);
-
-        //TODO tom decode the address here 
-        targetToUse = AbiCoder.defaultAbiCoder().decode(['address'], targetToUse)[0];
-
-        console.log("targetToUYse");
-        console.log(targetToUse);
-      }
-*/
 
       const [newRequest, newIValues, target] = await this.getValueFromPath(
         block,

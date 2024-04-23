@@ -104,14 +104,12 @@ describe('L1Verifier', () => {
     await provider.send('evm_mine', []);
   });
 
-  //DONE2
   it('returns a static value', async () => {
 
     const result = await target.getLatest({ enableCcipRead: true });
     expect(Number(result)).to.equal(49);
   });
 
-  //DONE2
   it('get padded address', async () => {
 
     const result = await target.getPaddedAddress({ enableCcipRead: true });
@@ -124,24 +122,18 @@ describe('L1Verifier', () => {
 
   });
 
-  //DONE2
   it('get sliced padded address', async () => {
-
     const result = await target.getStringBytesUsingAddressSlicedFromBytes({ enableCcipRead: true });
 
     expect(result).to.equal(
       "0x746f6d"
     );
-
   });
 
-
-  //DONE2
   it('get two static values from two different targets', async () => {
 
       const result = await target.getLatestFromTwo(anotherTestL2ContractAddress!, { enableCcipRead: true });
 
-      console.log("result", result);
       const decodedResult = AbiCoder.defaultAbiCoder().decode(['uint256'], result[0][0]);
       const decodedResultTwo = AbiCoder.defaultAbiCoder().decode(['uint256'], result[1][0]);
 
@@ -154,36 +146,23 @@ describe('L1Verifier', () => {
       );
   });
 
-  //DONE2
   it('returns a string from a storage slot on a target', async () => {
-
     const result = await target.getName({ enableCcipRead: true });
-
     expect(result).to.equal('Satoshi');
   });
 
-  //DONE2
   it('returns an array of strings from two different storage slots on the target', async () => {
-
     const result = await target.getNameTwice({ enableCcipRead: true });
-
-    console.log(result);
-
     expect(result).to.eql([ 'Satoshi', 'tomiscool' ]);
   });
 
-  //DONE2
   it('gets a value from an mapping using a string key', async () => {
-
       const result = await target.getStringAndStringFromMapping({ enableCcipRead: true });
       expect(result).to.equal(
         'clowes'
       );
-
-
   });
 
-  //DONE2
   it('get a dynamic string value using a key that is sliced from the previously returned value', async () => {
 
       const result = await target.getHighscorerFromRefSlice({ enableCcipRead: true });
@@ -192,52 +171,21 @@ describe('L1Verifier', () => {
       );
   });
 
-  
-  //NOT wip
   it('get an address by slicing part of a previously fetched value', async () => {
-
-    //try {
     const result = await target.getValueFromAddressFromRef({ enableCcipRead: true });
     expect(Number(result)).to.equal(262);
-  
-    //} catch (e) {
-    //  console.log(e);
-    //  const iface = new ethers.Interface(["error Problem(bytes)"]);
-    //  const erro = iface.decodeErrorResult("Problem", e.data)
-  
-    //  console.log(erro);
-  
-      //ans -   '0x000000000000000000000000000000000000000000000000000000000000002a' - succeeds
-      //alt - Result(1) [ '0x2a' ] - fails
-    //}
   });
 
-  //NOT
   it('slice', async () => {
-    
-    //try {
     const result = await target.getValueFromAddressFromRefSlice({ enableCcipRead: true });
     expect(Number(result)).to.equal(262);
-  
-    //} catch (e) {
-    //  console.log(e);
-    //  const iface = new ethers.Interface(["error Problem(bytes)"]);
-    //  const erro = iface.decodeErrorResult("Problem", e.data)
-  
-    //  console.log(erro);
-  
-      //ans -   '0x000000000000000000000000000000000000000000000000000000000000002a' - succeeds
-      //alt - Result(1) [ '0x2a' ] - fails
-    //}
   });
   
-  //DONE2
   it('get a dynamic value from a mapping keyed on uint256', async () => {
     const result = await target.getHighscorer(49, { enableCcipRead: true });
     expect(result).to.equal('Hal Finney');
   });
 
-  //DONE2
   it('get a long (multi slot) dynamic value from a mapping keyed on uint256', async () => {
     const result = await target.getHighscorer(1, { enableCcipRead: true });
     expect(result).to.equal(
@@ -245,19 +193,16 @@ describe('L1Verifier', () => {
     );
   });
 
-  //DONE2
   it('get static value from mapping using lookbehind to reference value', async () => {
     const result = await target.getLatestHighscore({ enableCcipRead: true });
     expect(Number(result)).to.equal(12345);
   });
 
-  //DONE
   it('get dynamic value from mapping using lookbehind to reference value', async () => {
     const result = await target.getLatestHighscorer({ enableCcipRead: true });
     expect(result).to.equal('Hal Finney');
   });
 
-  //DONE
   it('mappings with variable-length keys', async () => {
     const result = await target.getNickname('Money Skeleton', {
       enableCcipRead: true,
@@ -265,30 +210,26 @@ describe('L1Verifier', () => {
     expect(result).to.equal('Vitalik Buterin');
   });
 
-  //DONE
   it('nested proofs of mappings with variable-length keys', async () => {
     const result = await target.getPrimaryNickname({ enableCcipRead: true });
     expect(result).to.equal('Hal Finney');
   });
 
-  //DONE
   it('treats uninitialized storage elements as zeroes', async () => {
     const result = await target.getZero({ enableCcipRead: true });
     expect(Number(result)).to.equal(0);
   });
 
-  //DONE
+  
   it('treats uninitialized dynamic values as empty strings', async () => {
     const result = await target.getNickname('Santa', { enableCcipRead: true });
     expect(result).to.equal('');
   });
 
-  //DONE
   it('will index on uninitialized values', async () => {
     const result = await target.getZeroIndex({ enableCcipRead: true });
     expect(Number(result)).to.equal(1);
   })
-
 
   //TOM playing
   it('memory arrays', async () => {
