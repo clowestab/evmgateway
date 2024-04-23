@@ -18,6 +18,7 @@ struct ProofData {
 
 uint8 constant TOP_CONSTANT = 0x00;
 uint8 constant TOP_BACKREF = 0x20;
+uint8 constant TOP_INTERNALREF = 0x40;
 
 contract L1Verifier is IEVMVerifier {
     error BlockHeaderHashMismatch(uint256 current, uint256 number, bytes32 expected, bytes32 actual);
@@ -44,8 +45,14 @@ contract L1Verifier is IEVMVerifier {
         uint8 operand;
         uint256 cLength;
         address target;
+        RLPReader.RLPItem[] headerFields;
     }
 
+    struct ParseState {
+
+        uint8 nextCIdxToUse;
+        bytes[] internalValues;
+    }
 
     /**
      * The 3668 callback calls through to this method on the verifier to get proven values
@@ -65,9 +72,12 @@ contract L1Verifier is IEVMVerifier {
         //console.log("proof length");
         //console.log(proofsData.length);
         
-        uint8 nextCIdxToUse = 0;
+        
+        ParseState memory pState;
+        pState.nextCIdxToUse = 0;
+        
 
-        for(uint256 i = 0; i < proofsData.length; i++) {
+        for (uint256 i = 0; i < proofsData.length; i++) {
 
             //console.log("III");
             //console.log(i);
@@ -89,8 +99,17 @@ contract L1Verifier is IEVMVerifier {
             if(keccak256(l1Data.blockHeader) != blockhash(l1Data.blockNo)) {
                 revert BlockHeaderHashMismatch(block.number, l1Data.blockNo, blockhash(l1Data.blockNo), keccak256(l1Data.blockHeader));
             }
-            RLPReader.RLPItem[] memory headerFields = RLPReader.readList(l1Data.blockHeader);
-            bytes32 stateRoot = bytes32(RLPReader.readBytes(headerFields[3]));
+
+                    Command memory firstCommand;
+        firstCommand.command = commands[pState.nextCIdxToUse];
+        firstCommand.targetByte = firstCommand.command[0];
+        firstCommand.opcode = uint8(firstCommand.command[0]) & 0xe0;
+        firstCommand.operand = uint8(firstCommand.command[0]) & 0x1f;
+        firstCommand.cLength = commands.length;
+        firstCommand.target = address(uint160(bytes20(constants[firstCommand.operand])));
+
+            firstCommand.headerFields = RLPReader.readList(l1Data.blockHeader);
+            bytes32 stateRoot = bytes32(RLPReader.readBytes(firstCommand.headerFields[3]));
             
             //console.log("Target");
             //console.log(targets[i]);
@@ -103,28 +122,31 @@ contract L1Verifier is IEVMVerifier {
             //    targetToUse = abi.decode(storageResults[0][1], (address));
             //}
 
-        Command memory firstCommand;
-        firstCommand.command = commands[nextCIdxToUse];
-        firstCommand.targetByte = firstCommand.command[0];
-        firstCommand.opcode = uint8(firstCommand.command[0]) & 0xe0;
-        firstCommand.operand = uint8(firstCommand.command[0]) & 0x1f;
-        firstCommand.cLength = commands.length;
-        firstCommand.target = address(uint160(bytes20(constants[firstCommand.operand])));
+
 
         if (firstCommand.opcode == TOP_BACKREF) {
 
-//console.logBytes(storageResults[0][0]);
-                    //TOM TODO make this a reference to the correct result
-                    firstCommand.target = abi.decode(storageResults[0][0], (address));
+            //console.logBytes(storageResults[0][0]);
+            //TOM TODO make this a reference to the correct result
+            firstCommand.target = abi.decode(storageResults[0][0], (address));
 
-                    console.log("use this1", firstCommand.target);
+            //console.log("use this1", firstCommand.target);
 
 
+        } else if (firstCommand.opcode == TOP_INTERNALREF) {
+
+            console.log("IB");
+            console.logBytes(pState.internalValues[0]);
+            //TOM TODO make this a reference to the correct result
+            firstCommand.target = abi.decode(pState.internalValues[0], (address));
+
+            //console.log("use this1B", firstCommand.target);
         }
 
-            (bytes[] memory values, uint8 nextCIdx) = EVMProofHelper.getStorageValues(firstCommand.target, commands, nextCIdxToUse, constants, stateRoot, stateProof);
+{
+            (bytes[] memory values, bytes[] memory internalValues, uint8 nextCIdx) = EVMProofHelper.getStorageValues(firstCommand.target, commands, pState.nextCIdxToUse, constants, stateRoot, stateProof);
             
-
+            pState.internalValues = internalValues;
             //console.log("poost2", values.length);
             //console.log("State root");
             //console.logBytes(abi.encodePacked(stateRoot));
@@ -163,10 +185,12 @@ contract L1Verifier is IEVMVerifier {
             if (i == 1) {
                 //console.logBytes(values[0]);
             }
-            nextCIdxToUse = nextCIdx;
+            pState.nextCIdxToUse = nextCIdx;
 
             //console.log("nextCIdxToUse");
             //console.log(nextCIdxToUse);
+
+}
 
         }
 
@@ -175,7 +199,7 @@ contract L1Verifier is IEVMVerifier {
             console.logBytes(storageResults[0][0]);
             //console.logBytes(storageResults[1][0]);
 
-    bytes memory rw = storageResults[0][0];
+    //bytes memory rw = storageResults[0][0];
         //console.log("qq1");
                     //console.logBytes(rw);
 

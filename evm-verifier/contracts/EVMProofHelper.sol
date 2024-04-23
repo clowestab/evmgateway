@@ -13,6 +13,15 @@ struct StateProof {
     bytes[][] storageProofs;          // An array of proofs of individual storage elements 
 }
 
+
+struct CommandData {
+    bytes32 command;
+    bytes1 tByte;
+    uint8 tOpcode;
+    uint8 tOperand;
+    uint256 cLength;
+}
+
 uint8 constant OP_CONSTANT = 0x00;
 uint8 constant OP_BACKREF = 0x20;
 uint8 constant OP_SLICE = 0x40;
@@ -220,15 +229,6 @@ library EVMProofHelper {
         }
     }
 
-    struct Command {
-        bytes32 command;
-        bytes1 targetByte;
-        uint8 opcode;
-        uint8 operand;
-        uint256 cLength;
-    }
-
-
     /**
      * @notice Discerns slots from commands and gets values from contract storage
      * @param commands an array of commands
@@ -237,33 +237,29 @@ library EVMProofHelper {
      * @param stateRoot the root hash from which all storage proofs start
      * @param proof proof
      * @return values a bytes array of returned values
+     * @return internalValues a bytes array of internal values
      * @return nextCIdx index of the command to proceed from for the next target
      */
-    function getStorageValues(address target, bytes32[] memory commands, uint8 cIdx, bytes[] memory constants, bytes32 stateRoot, StateProof memory proof) internal view returns(bytes[] memory values, uint8 nextCIdx) {
+    function getStorageValues(address target, bytes32[] memory commands, uint8 cIdx, bytes[] memory constants, bytes32 stateRoot, StateProof memory proof) internal view returns(bytes[] memory values, bytes[] memory internalValues, uint8 nextCIdx) {
        
-       console.log("cIdx NOQ",cIdx);
-
-        Command memory firstCommand;
-        firstCommand.command = commands[cIdx];
-        firstCommand.targetByte = firstCommand.command[0];
-        firstCommand.opcode = uint8(firstCommand.command[0]) & 0xe0;
-        firstCommand.operand = uint8(firstCommand.command[0]) & 0x1f;
-        firstCommand.cLength = commands.length;
-
-
         bytes32 storageRoot = getStorageRoot(stateRoot, target, proof.stateTrieWitness);
         uint256 proofIdx = 0;
 
         //TOMNOTE we have to reinit this otherwise somewhere along the lines it uses the same memory as the previous call?
         values = new bytes[](0);
-        bytes[] memory internalValues = new bytes[](0);
+        internalValues = new bytes[](0);
 
-        console.log("command LENGTH", commands.length);
+        bytes1 lastTarget = commands[cIdx][0];
 
-        //uint256 commandLength = commands.length;
+        for (uint8 i = cIdx; i < commands.length; i++) {
 
-        for (uint8 i = cIdx; i < firstCommand.cLength; i++) {
-
+            CommandData memory commandData;
+            commandData.command = commands[i];
+            commandData.tByte = commandData.command[0];
+            commandData.tOpcode = uint8(commandData.tByte) & 0xe0;
+            commandData.tOperand = uint8(commandData.tByte) & 0x1f;
+            commandData.cLength = commands.length;
+            
             nextCIdx = i;
 
             console.log("i");
@@ -271,13 +267,12 @@ library EVMProofHelper {
             console.logBytes32(commands[i]);
 
             //When the target id changes..
-            if (commands[i][0] != firstCommand.targetByte) {
+            if (lastTarget != commandData.tByte) {
 
                 console.log("break");
                 break;
             }
-
-            //console.log("pre", values.length);
+            lastTarget = commandData.tByte;
 
             values = getValueFromPath(storageRoot, commands[i], constants, values, internalValues, proof, proofIdx);
                         console.log("post", values.length);

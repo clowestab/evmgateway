@@ -30,7 +30,9 @@ declare module 'hardhat/types/runtime' {
   }
 }
 
-var l2ContractAddress;
+
+//Hold contract deployment address globally
+var anotherTestL2ContractAddress: any; //used for multitarget tests
 
 describe('L1Verifier', () => {
   let provider: BrowserProvider;
@@ -76,23 +78,17 @@ describe('L1Verifier', () => {
     //Lets deploy to a locally running ganache node such that we can play
     verifier = await l1VerifierFactory.deploy(["http://localhost:8080/{sender}/{data}.json"]);
 
-    //Deploy a contract with various types of static/dynamic data in storage slots
-    const testL2Factory = await ethers.getContractFactory('TestL2', signer);
-    const l2Contract = await testL2Factory.deploy();
-    l2ContractAddress = await l2Contract.getAddress();
+    //Deploy a second target contract
+    const anotherTestL2ContractFactory = await ethers.getContractFactory('AnotherTestL2', signer);
+    const anotherTestL2Contract = await anotherTestL2ContractFactory.deploy();
+    anotherTestL2ContractAddress = await anotherTestL2Contract.getAddress();
 
-    console.log("l2ContractAddress", l2ContractAddress);
+    console.log("anotherTestL2ContractAddress", anotherTestL2ContractAddress);
 
-    const anotherContractFactory = await ethers.getContractFactory('AnotherTestL2', signer);
-    const anotherContract = await anotherContractFactory.deploy();
-    const anotherContractAddress = await anotherContract.getAddress();
-
-    console.log("anotherContractAddress", anotherContractAddress);
-
-    //Deploy another contract with various types of static/dynamic data in storage slots
+    //Deploy our core data contract with various types of static/dynamic data in storage slots
     const slotDataContractFactory = await ethers.getContractFactory('SlotDataContract', signer);
     const slotDataContract = await slotDataContractFactory.deploy(
-      anotherContractAddress
+      anotherTestL2ContractAddress //pass in our other contract address
     );
     const slotDataContractAddress = await slotDataContract.getAddress();
 
@@ -120,8 +116,10 @@ describe('L1Verifier', () => {
 
     const result = await target.getPaddedAddress({ enableCcipRead: true });
 
+    const expectedAddress: any = (anotherTestL2ContractAddress.replace("0x", "0x0000000000000000") + "00000038").toLowerCase();
+
     expect(result).to.equal(
-      "0x00000000000000008e674b194c868ea762e488a835695608cc170a6c00000038"
+      expectedAddress
     );
 
   });
@@ -129,7 +127,7 @@ describe('L1Verifier', () => {
   //DONE2
   it('get sliced padded address', async () => {
 
-    const result = await target.getSlicedPaddedAddress({ enableCcipRead: true });
+    const result = await target.getStringBytesUsingAddressSlicedFromBytes({ enableCcipRead: true });
 
     expect(result).to.equal(
       "0x746f6d"
@@ -137,51 +135,27 @@ describe('L1Verifier', () => {
 
   });
 
-  //DONE2
-  it('memory arrays', async () => {
-
-    const result = await target.memoryArrays(["0x00"], { enableCcipRead: true });
-  });
 
   //DONE2
   it('get two static values from two different targets', async () => {
 
-    //try {
-
-      const result = await target.getLatestFromTwo(l2ContractAddress!, { enableCcipRead: true });
+      const result = await target.getLatestFromTwo(anotherTestL2ContractAddress!, { enableCcipRead: true });
 
       console.log("result", result);
       const decodedResult = AbiCoder.defaultAbiCoder().decode(['uint256'], result[0][0]);
       const decodedResultTwo = AbiCoder.defaultAbiCoder().decode(['uint256'], result[1][0]);
 
-
-      
       expect(decodedResult[0]).to.equal(
         49n
       );
 
       expect(decodedResultTwo[0]).to.equal(
-        42n
+        262n
       );
-
-    //  } catch (e) {
-        
-        //console.log(e);
-        //const iface = new ethers.Interface(["error Problem(bytes)"]);
-        //const erro = iface.decodeErrorResult("Problem", e.data)
-    
-        //console.log(erro);
-    
-        //parsedValue = Result(1) [ '0x2a' ]; - fails
-
-        //ans -   '0x000000000000000000000000000000000000000000000000000000000000002a' - succeeds
-        //alt - Result(1) [ '0x2a' ] - fails
-      //}
-
   });
 
   //DONE2
-  it.only('returns a string from a storage slot on a target', async () => {
+  it('returns a string from a storage slot on a target', async () => {
 
     const result = await target.getName({ enableCcipRead: true });
 
@@ -218,28 +192,6 @@ describe('L1Verifier', () => {
       );
   });
 
-  //DONE2
-  it('get an address by slicing part of a previously fetched value', async () => {
-
-    const bl = ethers.getBytes("0xab");
-
-    console.log("BL", bl[0]);
-
-    //try {
-    const result = await target.getAddressFromRefSlice({ enableCcipRead: true });
-    expect(result).to.equal('tom');
-  
-    //} catch (e) {
-    //  console.log(e);
-    //  const iface = new ethers.Interface(["error Problem(bytes)"]);
-    //  const erro = iface.decodeErrorResult("Problem", e.data)
-  
-    //  console.log(erro);
-  
-      //ans -   '0x000000000000000000000000000000000000000000000000000000000000002a' - succeeds
-      //alt - Result(1) [ '0x2a' ] - fails
-    //}
-  });
   
   //NOT wip
   it('get an address by slicing part of a previously fetched value', async () => {
@@ -336,4 +288,11 @@ describe('L1Verifier', () => {
     const result = await target.getZeroIndex({ enableCcipRead: true });
     expect(Number(result)).to.equal(1);
   })
+
+
+  //TOM playing
+  it('memory arrays', async () => {
+
+    const result = await target.memoryArrays(["0x00"], { enableCcipRead: true });
+  });
 });

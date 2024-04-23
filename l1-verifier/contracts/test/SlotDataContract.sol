@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import "../console.sol";
+
 contract SlotDataContract {
     uint256 latest = 49;                                // Slot 0
     string name;                                        // Slot 1
@@ -17,7 +19,6 @@ contract SlotDataContract {
 
     constructor(address _anotherAddress) {
 
-        //latest = 42;
         name = "Satoshi";
         highscores[0] = 1;
         highscores[latest] = 12345;
@@ -26,8 +27,8 @@ contract SlotDataContract {
         realnames["Money Skeleton"] = "Vitalik Buterin";
         realnames["Satoshi"] = "Hal Finney";
         pointlessBytes = abi.encodePacked(uint8(0),uint8(0),uint8(49));
-        paddedAddress = abi.encodePacked(hex"00000000000000008e674B194c868ea762E488a835695608cC170A6c");
-        addressIdentifiers[address(0x8e674B194c868ea762E488a835695608cC170A6c)] = "tom";
+        paddedAddress = abi.encodePacked(uint64(0), _anotherAddress);
+        addressIdentifiers[_anotherAddress] = "tom";
         stringStrings["tom"] = "clowes";
         anotherAddress = _anotherAddress;
 

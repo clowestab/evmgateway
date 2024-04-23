@@ -12,7 +12,7 @@ interface IEVMGateway {
 
 uint8 constant TOP_CONSTANT = 0x00;   //00000000
 uint8 constant TOP_BACKREF = 0x20;    //
-
+uint8 constant TOP_INTERNALREF = 0x40;
 
 uint8 constant FLAG_STATIC = 0x01;
 uint8 constant FLAG_DYNAMIC = 0x01;
@@ -256,11 +256,11 @@ library EVMFetcher {
 
 
     /**
-     * @dev Adds a reference to a previous fetch to the current path.
+     * @dev Adds a reference to a previously discerned internal value (e.g a slice).
      * @param request The request object being operated on.
-     * @param idx The index of the previous fetch request, starting at 0.
+     * @param idx The index of the previous internal value request, starting at 0.
      */
-    function pref(EVMFetchRequest memory request, uint8 idx) internal view returns (EVMFetchRequest memory) {
+    function iref(EVMFetchRequest memory request, uint8 idx) internal view returns (EVMFetchRequest memory) {
         if(request.operationIdx >= 32) {
             revert CommandTooLong();
         }
@@ -272,7 +272,12 @@ library EVMFetcher {
         return request;
     }
 
-
+    /**
+     * @dev slices a previously requested value and stores it internally
+     * @param idx the index of the value to slice
+     * @param offset the offset from which to slice
+     * @param length the length to slice
+     */
     function refSlice(EVMFetchRequest memory request, uint8 idx, uint8 offset, uint8 length) internal view returns (EVMFetchRequest memory) {
         if(request.operationIdx >= 32) {
             revert CommandTooLong();
@@ -292,24 +297,37 @@ library EVMFetcher {
         return request;
     }
 
-
-
+    /**
+     * @dev sets the target to a specified address
+     * @param newTarget the new target address
+     */
     function setTarget(EVMFetchRequest memory request, address newTarget) internal view returns (EVMFetchRequest memory) {
         
-        //request.operationIdx = 0;
-
-        request.currentTargetIndex = _addConstant(request, abi.encodePacked(newTarget));
-        //_addOperation(request, T_CONSTANT | request.currentTargetIndex);
+        request.currentTargetByte = TOP_CONSTANT | _addConstant(request, abi.encodePacked(newTarget));
 
         return request;
     }
 
-
-
-
+    /**
+     * @dev sets the target to a previously fetched value
+     * @param idx the index of the value
+     */
     function setTargetRef(EVMFetchRequest memory request, uint8 idx) internal view returns (EVMFetchRequest memory) {
         
         request.currentTargetByte = TOP_BACKREF | idx;
+
+        console.log("byteis",request.currentTargetByte);
+
+        return request;
+    }
+
+    /**
+     * @dev sets the target to an internal value (a slice of a previous value)
+     * @param idx the index of the internal value
+     */
+    function setTargetIref(EVMFetchRequest memory request, uint8 idx) internal view returns (EVMFetchRequest memory) {
+        
+        request.currentTargetByte = TOP_INTERNALREF | idx;
 
         console.log("byteis",request.currentTargetByte);
 

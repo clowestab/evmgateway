@@ -15,6 +15,7 @@ import { AbiCoder } from 'ethers';
 
 const TOP_CONSTANT = 0x00;   //00000000
 const TOP_BACKREF = 0x20;
+const TOP_INTERNALREF = 0x40;
 
 const OP_CONSTANT = 0x00;
 const OP_BACKREF = 0x20;
@@ -432,10 +433,15 @@ export class EVMGateway<T extends ProvableBlock> {
     console.log("rLength", requests.length);
     if (tType == TOP_CONSTANT) {
       target = constants[tOperand];
-    } if (tType == TOP_BACKREF) {
+    } else if (tType == TOP_BACKREF) {
       target = await requests[0].value();
       target = AbiCoder.defaultAbiCoder().decode(['address'], target)[0];
       console.log("targ her", target);
+
+    } else if (tType == TOP_INTERNALREF) {
+      target = await internalValues[0];
+      target = AbiCoder.defaultAbiCoder().decode(['address'], target)[0];
+      console.log("targ herB", target);
 
     } else {
       throw new Error('Unrecognized target type');
