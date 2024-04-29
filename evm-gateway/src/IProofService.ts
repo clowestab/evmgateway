@@ -25,5 +25,5 @@ export interface IProofService<T extends ProvableBlock> {
    * @returns A proof of the given slots, encoded in a manner that this service's
    *   corresponding decoding library will understand.
    */
-  getProofs(block: T, address: AddressLike, slots: bigint[]): Promise<string>;
+  getProofs(block: T, target: AddressLike, slots: bigint[]): Promise<string>;
 }

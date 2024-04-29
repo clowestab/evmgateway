@@ -48,7 +48,11 @@ export class L1ProofService implements IProofService<L1ProvableBlock> {
     address: AddressLike,
     slot: bigint
   ): Promise<string> {
-    return this.helper.getStorageAt(block, address, slot);
+    const sto= this.helper.getStorageAt(block, address, slot);
+
+    console.log("STO", sto);
+
+    return sto;
   }
 
   /**
@@ -61,10 +65,13 @@ export class L1ProofService implements IProofService<L1ProvableBlock> {
    */
   async getProofs(
     blockNo: L1ProvableBlock,
-    address: AddressLike,
+    target: AddressLike,
     slots: bigint[]
   ): Promise<string> {
-    const proof = await this.helper.getProofs(blockNo, address, slots);
+
+    console.log("blockno ts", blockNo);
+
+    const proof = await this.helper.getProofs(blockNo, target, slots);
     const rpcBlock: JsonRpcBlock = await this.provider.send(
       'eth_getBlockByNumber',
       ['0x' + blockNo.toString(16), false]

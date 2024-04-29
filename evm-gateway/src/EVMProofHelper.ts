@@ -46,6 +46,7 @@ export class EVMProofHelper {
     address: AddressLike,
     slot: bigint
   ): Promise<string> {
+
     return this.provider.getStorage(address, slot, blockNo);
   }
 
@@ -59,18 +60,31 @@ export class EVMProofHelper {
    */
   async getProofs(
     blockNo: number,
-    address: AddressLike,
+    target: AddressLike,
     slots: bigint[]
   ): Promise<StateProof> {
+
+    console.log("slots", slots);
+
     const args = [
-      address,
+      target,
       slots.map((slot) => toBeHex(slot, 32)),
       '0x' + blockNo.toString(16),
     ];
+
+    console.log("Args", args);
+
+    //console.log("provider", this.provider);
+
     const proofs: EthGetProofResponse = await this.provider.send(
       'eth_getProof',
       args
     );
+
+    console.log("lol");
+
+    console.log(proofs);
+
     return {
       stateTrieWitness: proofs.accountProof,
       storageProofs: proofs.storageProof.map((proof) => proof.proof),

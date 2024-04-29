@@ -7,7 +7,7 @@ const options = {
 };
 
 async function main() {
-  const server = ganache.server(options);
+  /*const server = ganache.server(options);
   console.log('Starting server');
   const port = await new Promise((resolve, reject) => {
     server.listen(0, async (err) => {
@@ -15,7 +15,7 @@ async function main() {
       if (err) reject(err);
       resolve(server.address().port);
     });
-  });
+  });*/
 
   console.log('Starting hardhat');
   const code = await new Promise((resolve) => {
@@ -25,7 +25,7 @@ async function main() {
       {
         stdio: 'inherit',
         env: {
-          RPC_PORT: port.toString(),
+          RPC_PORT: 8545//port.toString(),
         },
       }
     );
@@ -33,7 +33,7 @@ async function main() {
   });
 
   console.log('Shutting down');
-  server.close();
+  //server.close();
   process.exit(code);
 }
 
