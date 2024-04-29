@@ -1,5 +1,5 @@
 import { Server } from '@chainlink/ccip-read-server';
-import { makeL1Gateway } from '@ensdomains/l1-gateway';
+import { makeL1Gateway } from '../../l1-gateway';
 import { HardhatEthersProvider } from '@nomicfoundation/hardhat-ethers/internal/hardhat-ethers-provider';
 import type { HardhatEthersHelpers } from '@nomicfoundation/hardhat-ethers/types';
 import { expect } from 'chai';
@@ -41,43 +41,64 @@ describe('L1Verifier', () => {
   let target: Contract;
 
   before(async () => {
-    // Hack to get a 'real' ethers provider from hardhat. The default `HardhatProvider`
+
+    // 1. Hack to get a 'real' ethers provider from hardhat. The default `HardhatProvider`
     // doesn't support CCIP-read.
-    provider = new ethers.BrowserProvider(ethers.provider._hardhatProvider);
+    // 2. If the test script has initialised a node, use that.
+    // Otherwise we are running a node in a separate process for debugging - use that
+    provider = process.env.RUN_NODE == "true" ? 
+      new ethers.BrowserProvider(ethers.provider._hardhatProvider) : 
+      new ethers.JsonRpcProvider("http://127.0.0.1:8545");
+
     // provider.on("debug", (x: any) => console.log(JSON.stringify(x, undefined, 2)));
     signer = await provider.getSigner(0);
-    const gateway = makeL1Gateway(provider as unknown as JsonRpcProvider);
-    const server = new Server();
-    gateway.add(server);
-    const app = server.makeApp('/');
-    const getUrl = FetchRequest.createGetUrlFunc();
-    ethers.FetchRequest.registerGetUrl(async (req: FetchRequest) => {
-      if (req.url != 'test:') return getUrl(req);
-
-      const r = request(app).post('/');
-      if (req.hasBody()) {
-        r.set('Content-Type', 'application/json').send(
-          ethers.toUtf8String(req.body)
-        );
-      }
-      const response = await r;
-      return {
-        statusCode: response.statusCode,
-        statusMessage: response.ok ? 'OK' : response.statusCode.toString(),
-        body: ethers.toUtf8Bytes(JSON.stringify(response.body)),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      };
-    });
+    
     const l1VerifierFactory = await ethers.getContractFactory(
       'L1Verifier',
       signer
     );
-    //verifier = await l1VerifierFactory.deploy(['test:']);
-    //Lets deploy to a locally running ganache node such that we can play
-    verifier = await l1VerifierFactory.deploy(["http://localhost:8080/{sender}/{data}.json"]);
 
+    //We default to using the localhost as our gateway URL
+    var ccipUrl = `http://127.0.0.1:8080/{sender}/{data}.json`;
+
+    //If we are NOT running a local gateway we will spawn one
+    if (process.env.RUN_GATEWAY == "true") {
+
+      console.log("Spawning a gateway");
+
+      //And update the CCIP read gateway IRL
+      ccipUrl = "test:";
+
+      const gateway = makeL1Gateway(provider as unknown as JsonRpcProvider);
+      const server = new Server();
+      gateway.add(server);
+      const app = server.makeApp('/');
+      const getUrl = FetchRequest.createGetUrlFunc();
+      ethers.FetchRequest.registerGetUrl(async (req: FetchRequest) => {
+        if (req.url != 'test:') return getUrl(req);
+
+        const r = request(app).post('/');
+        if (req.hasBody()) {
+          r.set('Content-Type', 'application/json').send(
+            ethers.toUtf8String(req.body)
+          );
+        }
+        const response = await r;
+        return {
+          statusCode: response.statusCode,
+          statusMessage: response.ok ? 'OK' : response.statusCode.toString(),
+          body: ethers.toUtf8Bytes(JSON.stringify(response.body)),
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        };
+      });      
+    }
+
+    console.log("CCIP URL", ccipUrl);
+
+    verifier = await l1VerifierFactory.deploy([ccipUrl]);
+    
     //Deploy a second target contract
     const anotherTestL2ContractFactory = await ethers.getContractFactory('AnotherTestL2', signer);
     const anotherTestL2Contract = await anotherTestL2ContractFactory.deploy();
@@ -104,7 +125,7 @@ describe('L1Verifier', () => {
     await provider.send('evm_mine', []);
   });
 
-  it('returns a static value', async () => {
+  it.only('returns a static value', async () => {
 
     const result = await target.getLatest({ enableCcipRead: true });
     expect(Number(result)).to.equal(49);

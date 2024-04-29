@@ -13,6 +13,9 @@
   "scripts": {
     "build": "echo 'building l1-verifier...' && bun hardhat compile",
     "test": "node ./scripts/test.js",
+    "run_node_test": "node ./scripts/test.js run-node",
+    "run_gateway_test": "node ./scripts/test.js run-gateway",
+    "run_both_test": "node ./scripts/test.js run-gateway run-node",
     "remote_test": "hardhat run scripts/remote.ts",
     "clean": "rm -fr artifacts cache node_modules typechain-types",
     "lint": "exit 0"

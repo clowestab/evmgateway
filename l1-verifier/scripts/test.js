@@ -3,19 +3,27 @@ const ganache = require('ganache');
 const options = {
   logging: {
     quiet: true,
-  },
+  }
 };
 
+const args = new Set(process.argv.slice(2));
+
 async function main() {
-  /*const server = ganache.server(options);
-  console.log('Starting server');
-  const port = await new Promise((resolve, reject) => {
-    server.listen(0, async (err) => {
-      console.log(`Listening on port ${server.address().port}`);
-      if (err) reject(err);
-      resolve(server.address().port);
+
+  var port = 8545;
+
+  if (args.has("run-node")) {
+    const server = ganache.server(options);
+    console.log('Starting local Ganache node');
+    port = await new Promise((resolve, reject) => {
+      server.listen(8545, async (err) => {
+        console.log(`Listening on port ${server.address().port}`);
+        if (err) reject(err);
+        resolve(server.address().port);
+      });
     });
-  });*/
+  }
+
 
   console.log('Starting hardhat');
   const code = await new Promise((resolve) => {
@@ -25,7 +33,9 @@ async function main() {
       {
         stdio: 'inherit',
         env: {
-          RPC_PORT: 8545//port.toString(),
+          RPC_PORT: port.toString(),
+          RUN_NODE: args.has("run-node"),
+          RUN_GATEWAY: args.has("run-gateway")
         },
       }
     );
