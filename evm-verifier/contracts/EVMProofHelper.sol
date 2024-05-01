@@ -25,6 +25,13 @@ struct SlotData {
     uint8 postProcessIndex;
 }
 
+struct ProcessData {
+    uint8 nextCIdxToUse;
+    bytes[] internalValues;
+    RLPReader.RLPItem[] headerFields;
+    address target;
+}
+
 uint8 constant OP_CONSTANT = 0x00;
 uint8 constant OP_BACKREF = 0x20;
 uint8 constant OP_SLICE = 0x40;

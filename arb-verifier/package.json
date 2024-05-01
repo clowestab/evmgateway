@@ -4,7 +4,8 @@
   "version": "0.1.0",
   "scripts": {
     "build": "echo 'building arb-verifier...' && bun hardhat compile",
-    "test": " hardhat test --network arbDevnetL1",
+    "test": "hardhat test --network arbDevnetL1",
+    "run_gateway_test": "node ./scripts/test.js",
     "clean": "rm -fr artifacts cache node_modules typechain-types",
     "lint": "exit 0"
   },

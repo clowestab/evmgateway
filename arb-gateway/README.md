@@ -33,12 +33,4 @@ yarn deploy --env sepolia
 
 ## How to test
 
-1. Start the Nitro Test node. You can find instructions here: https://docs.arbitrum.io/node-running/how-tos/local-dev-node
-2. Retrieve the Rollup address from the Node's Logs.
-3. Copy the example.env file in both arb-gateway and arb-verifier, and add the Rollup address.
-4. Build the Project.
-5. Navigate to the Gateway directory using `cd ./arb-gateway`.
-6. Start the Gateway by running `bun run start -u http://127.0.0.1:8545/ -v http://127.0.0.1:8547/ -p 8089`.
-7. Open another Terminal Tab and navigate to the verifier directory using `cd ./arb-verifier/`.
-8. Deploy contracts to the node using the command `npx hardhat --network arbDevnetL2 deploy && npx hardhat --network arbDevnetL1 deploy`.
-9. Run the test using the command `bun run test`.
+- See the [arb-verifier](https://github.com/ensdomains/evmgateway/tree/main/arb-verifier) README.

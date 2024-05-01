@@ -1,6 +1,6 @@
 import { Server } from '@chainlink/ccip-read-server';
 import { Command } from '@commander-js/extra-typings';
-import { EVMGateway } from '@ensdomains/evm-gateway';
+import { EVMGateway } from '../../evm-gateway';
 import { JsonRpcProvider } from 'ethers';
 import { ArbProofService } from './ArbProofService.js';
 import { InMemoryBlockCache } from './blockCache/InMemoryBlockCache.js';
@@ -10,12 +10,12 @@ const program = new Command()
   .option(
     '-u, --l1-provider-url <url>',
     'l1 provider url',
-    'http://localhost:8545/'
+    'http://127.0.0.1:8545/'
   )
   .option(
     '-v, --l2-provider-url <url>',
     'l2 provider url',
-    'http://localhost:9545/'
+    'http://127.0.0.1:8547/'
   )
   .option(
     '-o --l2-rollup-address <address>',

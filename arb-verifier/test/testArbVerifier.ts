@@ -1,117 +1,121 @@
-import { Server } from '@chainlink/ccip-read-server';
-import { makeArbGateway } from '@ensdomains/arb-gateway';
-import { HardhatEthersProvider } from '@nomicfoundation/hardhat-ethers/internal/hardhat-ethers-provider';
-import type { HardhatEthersHelpers } from '@nomicfoundation/hardhat-ethers/types';
 import { expect } from 'chai';
 import {
   Contract,
-  FetchRequest,
-  Provider,
-  Signer,
-  ethers as ethersT
+  AbiCoder,
+  ethers
 } from 'ethers';
-import express from 'express';
-import hre, { ethers } from 'hardhat';
-import { EthereumProvider } from 'hardhat/types';
-import request from 'supertest';
+import hre from 'hardhat';
 
-type ethersObj = typeof ethersT &
-  Omit<HardhatEthersHelpers, 'provider'> & {
-    provider: Omit<HardhatEthersProvider, '_hardhatProvider'> & {
-      _hardhatProvider: EthereumProvider;
-    };
-  };
+import SlotExamples from '../ignition/modules/l1/SlotExamples';
+import l2DeploymentAddresses from "../ignition/deployments/chain-412346/deployed_addresses.json";
 
-declare module 'hardhat/types/runtime' {
-  const ethers: ethersObj;
-  interface HardhatRuntimeEnvironment {
-    ethers: ethersObj;
-  }
-}
 
 describe('ArbVerifier', () => {
-  let provider: Provider;
-  let signer: Signer;
-  let gateway: express.Application;
   let target: Contract;
 
+  const slotDataContractAddress = l2DeploymentAddresses["SlotDataContract#SlotDataContract"];
+  const anotherTestL2ContractAddress = l2DeploymentAddresses["AnotherTestL2#AnotherTestL2"];
+
+  if (!slotDataContractAddress) { throw("No Deployment address for main L2 target"); }
+  if (!anotherTestL2ContractAddress) { throw("No Deployment address for second L2 target"); }
+
   before(async () => {
-    // Hack to get a 'real' ethers provider from hardhat. The default `HardhatProvider`
-    // doesn't support CCIP-read.
-    provider = new ethers.BrowserProvider(hre.network.provider);
-    signer = await provider.getSigner(0);
 
-    //Rollup address according to sequencer config. Unfortunately, there is no endpoint to fetch it at runtime from the rollup.
-    //The address can be found at nitro-testnode-sequencer-1/config/deployment.json 
-    const rollupAddress = process.env.ROLLUP_ADDRESS;
-    // When testing against Goerli, replace with this address
-    // const rollupAddress = '0x45e5cAea8768F42B385A366D3551Ad1e0cbFAb17';
-    const chainId = hre.network.config.chainId
-    const gateway = await makeArbGateway(
-      (hre.network.config as any).url, 
-      (hre.config.networks[hre.network.companionNetworks.l2] as any).url,
-      rollupAddress,
-      chainId,
-    );
-    const server = new Server()
-    gateway.add(server)
-    const app = server.makeApp('/')
+    const l1Provider = new ethers.JsonRpcProvider((hre.network.config as any).url);
 
-
-    // Replace ethers' fetch function with one that calls the gateway directly.
-    const getUrl = FetchRequest.createGetUrlFunc();
-    ethers.FetchRequest.registerGetUrl(async (req: FetchRequest) => {
-      if (req.url != "test:") return getUrl(req);
-
-      const r = request(app).post('/');
-      if (req.hasBody()) {
-        r.set('Content-Type', 'application/json').send(
-          ethers.toUtf8String(req.body)
-        );
-      }
-      const response = await r;
-      return {
-        statusCode: response.statusCode,
-        statusMessage: response.ok ? 'OK' : response.statusCode.toString(),
-        body: ethers.toUtf8Bytes(JSON.stringify(response.body)),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      };
-    });
-
-    const targetDeployment = await hre.deployments.get('TestL1');
-    target = await ethers.getContractAt('TestL1', targetDeployment.address, signer);
+    const slotExamples = await hre.ignition.deploy(SlotExamples);
+    target = slotExamples.slotExamplesContract.connect(l1Provider) as typeof slotExamples.slotExamplesContract
   })
 
-  it('simple proofs for fixed values', async () => {
+  it('returns a static value', async () => {
     const result = await target.getLatest({ enableCcipRead: true });
-    expect(Number(result)).to.equal(42);
+    expect(Number(result)).to.equal(49);
   });
 
-  it('simple proofs for dynamic values', async () => {
+  it('get padded address', async () => {
+    const result = await target.getPaddedAddress({ enableCcipRead: true });
+    const expectedAddress: any = (anotherTestL2ContractAddress.replace("0x", "0x0000000000000000") + "00000038").toLowerCase();
+
+    expect(result).to.equal(
+      expectedAddress
+    );
+  });
+
+  it('get sliced padded address', async () => {
+    const result = await target.getStringBytesUsingAddressSlicedFromBytes({ enableCcipRead: true });
+
+    expect(result).to.equal(
+      "0x746f6d"
+    );
+  });
+
+  it('get two static values from two different targets', async () => {
+      const result = await target.getLatestFromTwo(anotherTestL2ContractAddress!, { enableCcipRead: true });
+
+      const decodedResult = AbiCoder.defaultAbiCoder().decode(['uint256'], result[0][0]);
+      const decodedResultTwo = AbiCoder.defaultAbiCoder().decode(['uint256'], result[1][0]);
+
+      expect(decodedResult[0]).to.equal(
+        49n
+      );
+
+      expect(decodedResultTwo[0]).to.equal(
+        262n
+      );
+  });
+
+  it('returns a string from a storage slot on a target', async () => {
     const result = await target.getName({ enableCcipRead: true });
     expect(result).to.equal('Satoshi');
   });
 
-  it('nested proofs for dynamic values', async () => {
-    const result = await target.getHighscorer(42, { enableCcipRead: true });
+  it('returns an array of strings from two different storage slots on the target', async () => {
+    const result = await target.getNameTwice({ enableCcipRead: true });
+    expect(result).to.eql([ 'Satoshi', 'tomiscool' ]);
+  });
+
+  it('gets a value from an mapping using a string key', async () => {
+      const result = await target.getStringAndStringFromMapping({ enableCcipRead: true });
+      expect(result).to.equal(
+        'clowes'
+      );
+  });
+
+  it('get a dynamic string value using a key that is sliced from the previously returned value', async () => {
+      const result = await target.getHighscorerFromRefSlice({ enableCcipRead: true });
+      expect(result).to.equal(
+        'Hal Finney'
+      );
+  });
+
+  it('get an address by slicing part of a previously fetched value', async () => {
+    const result = await target.getValueFromAddressFromRef({ enableCcipRead: true });
+    expect(Number(result)).to.equal(262);
+  });
+
+  it('slice', async () => {
+    const result = await target.getValueFromAddressFromRefSlice({ enableCcipRead: true });
+    expect(Number(result)).to.equal(262);
+  });
+  
+  it('get a dynamic value from a mapping keyed on uint256', async () => {
+    const result = await target.getHighscorer(49, { enableCcipRead: true });
     expect(result).to.equal('Hal Finney');
   });
 
-  it('nested proofs for long dynamic values', async () => {
+  it('get a long (multi slot) dynamic value from a mapping keyed on uint256', async () => {
     const result = await target.getHighscorer(1, { enableCcipRead: true });
     expect(result).to.equal(
       'Hubert Blaine Wolfeschlegelsteinhausenbergerdorff Sr.'
     );
   });
 
-  it('nested proofs with lookbehind', async () => {
+  it('get static value from mapping using lookbehind to reference value', async () => {
     const result = await target.getLatestHighscore({ enableCcipRead: true });
     expect(Number(result)).to.equal(12345);
   });
 
-  it('nested proofs with lookbehind for dynamic values', async () => {
+  it('get dynamic value from mapping using lookbehind to reference value', async () => {
     const result = await target.getLatestHighscorer({ enableCcipRead: true });
     expect(result).to.equal('Hal Finney');
   });
@@ -135,6 +139,11 @@ describe('ArbVerifier', () => {
 
   it('treats uninitialized dynamic values as empty strings', async () => {
     const result = await target.getNickname('Santa', { enableCcipRead: true });
-    expect(result).to.equal("");
+    expect(result).to.equal('');
+  });
+
+  it('will index on uninitialized values', async () => {
+    const result = await target.getZeroIndex({ enableCcipRead: true });
+    expect(Number(result)).to.equal(1);
   })
 });

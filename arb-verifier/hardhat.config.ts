@@ -1,8 +1,8 @@
 import '@nomicfoundation/hardhat-toolbox';
-import 'hardhat-deploy';
-import 'hardhat-deploy-ethers';
+
 import { HardhatUserConfig } from 'hardhat/config';
-import 'ethers';
+import "@nomicfoundation/hardhat-ignition-ethers";
+
 const DEPLOYER_PRIVATE_KEY =
   process.env.DEPLOYER_PRIVATE_KEY ||
   'ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
@@ -27,6 +27,7 @@ const config: HardhatUserConfig = {
       url: 'http://127.0.0.1:8547/',
       accounts: [
         '0xb6b15c8cb491557369f3c7d2c287b053eb229daa9c22138887752191c9520659',
+        '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
       ],
       deploy: ['deploy_l2/'],
     },
@@ -88,6 +89,9 @@ const config: HardhatUserConfig = {
   namedAccounts: {
     deployer: 0,
   },
+  ignition: {
+    requiredConfirmations: 1
+  }
 };
 
 export default config;

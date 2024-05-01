@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import { IEVMVerifier } from "@ensdomains/evm-verifier/contracts/IEVMVerifier.sol";
 import { RLPReader } from "@eth-optimism/contracts-bedrock/src/libraries/rlp/RLPReader.sol";
-import { StateProof, CommandData, EVMProofHelper } from "@ensdomains/evm-verifier/contracts/EVMProofHelper.sol";
+import { StateProof, CommandData, ProcessData, EVMProofHelper } from "@ensdomains/evm-verifier/contracts/EVMProofHelper.sol";
 import "./console.sol";
 
 struct L1WitnessData {
@@ -16,12 +16,6 @@ struct ProofData {
     bytes blockHeader;
 }
 
-struct ProcessData {
-    uint8 nextCIdxToUse;
-    bytes[] internalValues;
-    RLPReader.RLPItem[] headerFields;
-    address target;
-}
 
 uint8 constant TOP_CONSTANT = 0x00;
 uint8 constant TOP_BACKREF = 0x20;
@@ -89,7 +83,14 @@ contract L1Verifier is IEVMVerifier {
                 pData.target = abi.decode(pData.internalValues[firstCommand.tOperand], (address));
             }
 
-            (bytes[] memory values, bytes[] memory internalValues, uint8 nextCIdx) = EVMProofHelper.getStorageValues(pData.target, commands, pData.nextCIdxToUse, constants, stateRoot, stateProof);
+            (bytes[] memory values, bytes[] memory internalValues, uint8 nextCIdx) = EVMProofHelper.getStorageValues(
+                pData.target, 
+                commands, 
+                pData.nextCIdxToUse, 
+                constants, 
+                stateRoot, 
+                stateProof
+            );
             
             pData.internalValues = internalValues;
             

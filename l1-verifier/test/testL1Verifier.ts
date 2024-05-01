@@ -125,7 +125,7 @@ describe('L1Verifier', () => {
     await provider.send('evm_mine', []);
   });
 
-  it.only('returns a static value', async () => {
+  it('returns a static value', async () => {
 
     const result = await target.getLatest({ enableCcipRead: true });
     expect(Number(result)).to.equal(49);
