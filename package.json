@@ -52,5 +52,11 @@
   "dependencies": {
     "@ensdomains/ccip-read-cf-worker": "^0.0.3",
     "@eth-optimism/sdk": "^3.1.4"
-  }
+  },
+  "trustedDependencies": [
+    "@arbitrum/nitro-contracts",
+    "@ensdomains/evm-gateway",
+    "@ensdomains/l1-gateway",
+    "@ensdomains/op-gateway"
+  ]
 }

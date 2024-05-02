@@ -47,7 +47,7 @@
     "build": "echo 'building arb-gateway...' && bun run clean && bun run build:cjs && bun run build:esm && bun run build:types",
     "prepublishOnly": "bun ../scripts/prepublishOnly.ts",
     "lint": "eslint . --ext .ts",
-    "postprepare": "bun run build",
+    "prepare": "bun run build",
     "clean": "rm -fr _cjs _esm _types"
   },
   "husky": {
