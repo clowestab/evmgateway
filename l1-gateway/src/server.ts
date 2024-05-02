@@ -12,7 +12,7 @@ program.parse();
 
 const options = program.opts();
 
-console.log("Provider URL", options.providerUrl);
+console.log('Provider URL', options.providerUrl);
 
 const provider = new ethers.JsonRpcProvider(options.providerUrl);
 const gateway = new EVMGateway(new L1ProofService(provider));
