@@ -7,11 +7,18 @@ import {
 import hre from 'hardhat';
 
 import SlotExamples from '../ignition/modules/l1/SlotExamples';
-import l2DeploymentAddresses from "../ignition/deployments/chain-412346/deployed_addresses.json";
 
 
-describe('ArbVerifier', () => {
+describe('ArbVerifier', async () => {
   let target: Contract;
+
+  //@ts-ignore
+  const l2DeploymentAddresses = await import("../ignition/deployments/chain-412346/deployed_addresses.json").catch(err=> {
+    console.log("No L2 deployments");
+    process.exit();
+  });
+
+  console.log("L2 Deployment Addresses", l2DeploymentAddresses);
 
   const slotDataContractAddress = l2DeploymentAddresses["SlotDataContract#SlotDataContract"];
   const anotherTestL2ContractAddress = l2DeploymentAddresses["AnotherTestL2#AnotherTestL2"];

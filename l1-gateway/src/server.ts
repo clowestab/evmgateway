@@ -6,7 +6,7 @@ import { L1ProofService } from './L1ProofService.js';
 
 const program = new Command()
   .option('-p, --port <port>', 'port to listen on', '8080')
-  .option('-u, --provider-url <url>', 'provider url', 'http://localhost:8545/');
+  .option('-u, --provider-url <url>', 'provider url', 'http://127.0.0.1:8545/');
 
 program.parse();
 

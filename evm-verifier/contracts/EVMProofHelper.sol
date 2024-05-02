@@ -5,8 +5,6 @@ import {RLPReader} from "@eth-optimism/contracts-bedrock/src/libraries/rlp/RLPRe
 import {Bytes} from "@eth-optimism/contracts-bedrock/src/libraries/Bytes.sol";
 import {SecureMerkleTrie} from "./SecureMerkleTrie.sol";
 
-import "@ganache/console.log/console.sol";
-
 struct StateProof {
     bytes[] stateTrieWitness;         // Witness proving the `storageRoot` against a state root.
     bytes[][] storageProofs;          // An array of proofs of individual storage elements 

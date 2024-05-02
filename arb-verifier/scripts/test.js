@@ -7,9 +7,10 @@ require('dotenv').config()
 
 const args = new Set(process.argv.slice(2));
 
-async function main() {
+const rollupAddress = process.env.ROLLUP_ADDRESS;
+if (!rollupAddress) { throw("Specify the Arbitrum Rollupp address in your .env"); }
 
-    const rollupAddress = process.env.ROLLUP_ADDRESS;
+async function main() {
 
     const l1Provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545/");
     const l2Provider = new ethers.JsonRpcProvider("http://127.0.0.1:8547/");
