@@ -96,7 +96,6 @@ contract SlotExamples is EVMFetchTarget {
     }
 
     function getHighscorerFromRefSliceCallback(bytes[][] memory values, bytes memory) public pure returns(string memory) {
-        string memory answer = string(values[0][1]);
         return string(values[0][1]);
     }
 

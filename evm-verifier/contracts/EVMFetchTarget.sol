@@ -12,7 +12,7 @@ abstract contract EVMFetchTarget {
     using Address for address;
 
     error ResponseLengthMismatch(uint256 actual, uint256 expected);
-    
+
     /**
      * @dev Internal callback function invoked by CCIP-Read in response to a `getStorageSlots` request.
      */
@@ -32,14 +32,7 @@ abstract contract EVMFetchTarget {
 
         bytes[][] memory values = verifier.getStorageValues(commands, constants, proofsData);
 
-        if(values.length != commands.length) {
-            //This should move to helper and be renamed. as values in an array indexed by target so 2 commands, 1 target = 1 value key with 2 nested values
-            //revert ResponseLengthMismatch(values.length, commands.length);
-        }
-
         bytes memory ret = address(this).functionCall(abi.encodeWithSelector(callback, values, callbackData));
-
-        bytes[] memory rets = new bytes[](2);
 
         assembly {
             return(add(ret, 32), mload(ret))
