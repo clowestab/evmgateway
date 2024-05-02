@@ -5,6 +5,8 @@ import { JsonRpcProvider } from 'ethers';
 import { ArbProofService } from './ArbProofService.js';
 import { InMemoryBlockCache } from './blockCache/InMemoryBlockCache.js';
 
+if (!process.env.ROLLUP_ADDRESS) { throw("Please specify the rollup address in your .env file"); }
+
 const program = new Command()
   .option('-p, --port <port>', 'port to listen on', '8080')
   .option(
