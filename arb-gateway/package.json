@@ -63,7 +63,7 @@
     "@ethereumjs/block": "^5.0.0",
     "@nomicfoundation/ethereumjs-block": "^5.0.2",
     "commander": "^11.0.0",
-    "ethers": "^6.7.1"
+    "ethers": "^6.8.0"
   },
   "devDependencies": {
     "@commander-js/extra-typings": "^11.0.0"
