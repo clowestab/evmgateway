@@ -249,20 +249,4 @@ contract SlotExamples is EVMFetchTarget {
     function getZeroIndexCallback(bytes[][] memory values, bytes memory) public pure returns(uint256) {
         return abi.decode(values[0][1], (uint256));
     }
-
-
-    //TOM playing
-    function memoryArrays(bytes[] memory input) public view returns (bytes[] memory output){
-        
-        console.log("Input length", input.length);
-        console.log("Output length", output.length);
-
-        assembly {
-            mstore(output, 2)
-        }
-
-        output[1] = "0x00";
-
-        console.log("Output length2", output.length);
-    }
 }

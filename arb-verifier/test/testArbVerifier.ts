@@ -1,38 +1,44 @@
 import { expect } from 'chai';
-import {
-  Contract,
-  AbiCoder,
-  ethers
-} from 'ethers';
+import { Contract, AbiCoder, ethers } from 'ethers';
 import hre from 'hardhat';
 
 import SlotExamples from '../ignition/modules/l1/SlotExamples';
-
 
 describe('ArbVerifier', async () => {
   let target: Contract;
 
   //@ts-ignore
-  const l2DeploymentAddresses = await import("../ignition/deployments/chain-412346/deployed_addresses.json").catch(err=> {
-    console.log("No L2 deployments");
+  const l2DeploymentAddresses = await import(
+    '../ignition/deployments/chain-412346/deployed_addresses.json'
+  ).catch((err) => {
+    console.log('No L2 deployments');
     process.exit();
   });
 
-  console.log("L2 Deployment Addresses", l2DeploymentAddresses);
+  console.log('L2 Deployment Addresses', l2DeploymentAddresses);
 
-  const slotDataContractAddress = l2DeploymentAddresses["SlotDataContract#SlotDataContract"];
-  const anotherTestL2ContractAddress = l2DeploymentAddresses["AnotherTestL2#AnotherTestL2"];
+  const slotDataContractAddress =
+    l2DeploymentAddresses['SlotDataContract#SlotDataContract'];
+  const anotherTestL2ContractAddress =
+    l2DeploymentAddresses['AnotherTestL2#AnotherTestL2'];
 
-  if (!slotDataContractAddress) { throw("No Deployment address for main L2 target"); }
-  if (!anotherTestL2ContractAddress) { throw("No Deployment address for second L2 target"); }
+  if (!slotDataContractAddress) {
+    throw 'No Deployment address for main L2 target';
+  }
+  if (!anotherTestL2ContractAddress) {
+    throw 'No Deployment address for second L2 target';
+  }
 
   before(async () => {
-
-    const l1Provider = new ethers.JsonRpcProvider((hre.network.config as any).url);
+    const l1Provider = new ethers.JsonRpcProvider(
+      (hre.network.config as any).url
+    );
 
     const slotExamples = await hre.ignition.deploy(SlotExamples);
-    target = slotExamples.slotExamplesContract.connect(l1Provider) as typeof slotExamples.slotExamplesContract
-  })
+    target = slotExamples.slotExamplesContract.connect(
+      l1Provider
+    ) as typeof slotExamples.slotExamplesContract;
+  });
 
   it('returns a static value', async () => {
     const result = await target.getLatest({ enableCcipRead: true });
@@ -41,34 +47,40 @@ describe('ArbVerifier', async () => {
 
   it('get padded address', async () => {
     const result = await target.getPaddedAddress({ enableCcipRead: true });
-    const expectedAddress: any = (anotherTestL2ContractAddress.replace("0x", "0x0000000000000000") + "00000038").toLowerCase();
+    const expectedAddress: any = (
+      anotherTestL2ContractAddress.replace('0x', '0x0000000000000000') +
+      '00000038'
+    ).toLowerCase();
 
-    expect(result).to.equal(
-      expectedAddress
-    );
+    expect(result).to.equal(expectedAddress);
   });
 
   it('get sliced padded address', async () => {
-    const result = await target.getStringBytesUsingAddressSlicedFromBytes({ enableCcipRead: true });
+    const result = await target.getStringBytesUsingAddressSlicedFromBytes({
+      enableCcipRead: true,
+    });
 
-    expect(result).to.equal(
-      "0x746f6d"
-    );
+    expect(result).to.equal('0x746f6d');
   });
 
   it('get two static values from two different targets', async () => {
-      const result = await target.getLatestFromTwo(anotherTestL2ContractAddress!, { enableCcipRead: true });
+    const result = await target.getLatestFromTwo(
+      anotherTestL2ContractAddress!,
+      { enableCcipRead: true }
+    );
 
-      const decodedResult = AbiCoder.defaultAbiCoder().decode(['uint256'], result[0][0]);
-      const decodedResultTwo = AbiCoder.defaultAbiCoder().decode(['uint256'], result[1][0]);
+    const decodedResult = AbiCoder.defaultAbiCoder().decode(
+      ['uint256'],
+      result[0][0]
+    );
+    const decodedResultTwo = AbiCoder.defaultAbiCoder().decode(
+      ['uint256'],
+      result[1][0]
+    );
 
-      expect(decodedResult[0]).to.equal(
-        49n
-      );
+    expect(decodedResult[0]).to.equal(49n);
 
-      expect(decodedResultTwo[0]).to.equal(
-        262n
-      );
+    expect(decodedResultTwo[0]).to.equal(262n);
   });
 
   it('returns a string from a storage slot on a target', async () => {
@@ -78,33 +90,37 @@ describe('ArbVerifier', async () => {
 
   it('returns an array of strings from two different storage slots on the target', async () => {
     const result = await target.getNameTwice({ enableCcipRead: true });
-    expect(result).to.eql([ 'Satoshi', 'tomiscool' ]);
+    expect(result).to.eql(['Satoshi', 'tomiscool']);
   });
 
   it('gets a value from an mapping using a string key', async () => {
-      const result = await target.getStringAndStringFromMapping({ enableCcipRead: true });
-      expect(result).to.equal(
-        'clowes'
-      );
+    const result = await target.getStringAndStringFromMapping({
+      enableCcipRead: true,
+    });
+    expect(result).to.equal('clowes');
   });
 
   it('get a dynamic string value using a key that is sliced from the previously returned value', async () => {
-      const result = await target.getHighscorerFromRefSlice({ enableCcipRead: true });
-      expect(result).to.equal(
-        'Hal Finney'
-      );
+    const result = await target.getHighscorerFromRefSlice({
+      enableCcipRead: true,
+    });
+    expect(result).to.equal('Hal Finney');
   });
 
   it('get an address by slicing part of a previously fetched value', async () => {
-    const result = await target.getValueFromAddressFromRef({ enableCcipRead: true });
+    const result = await target.getValueFromAddressFromRef({
+      enableCcipRead: true,
+    });
     expect(Number(result)).to.equal(262);
   });
 
   it('slice', async () => {
-    const result = await target.getValueFromAddressFromRefSlice({ enableCcipRead: true });
+    const result = await target.getValueFromAddressFromRefSlice({
+      enableCcipRead: true,
+    });
     expect(Number(result)).to.equal(262);
   });
-  
+
   it('get a dynamic value from a mapping keyed on uint256', async () => {
     const result = await target.getHighscorer(49, { enableCcipRead: true });
     expect(result).to.equal('Hal Finney');
@@ -152,5 +168,5 @@ describe('ArbVerifier', async () => {
   it('will index on uninitialized values', async () => {
     const result = await target.getZeroIndex({ enableCcipRead: true });
     expect(Number(result)).to.equal(1);
-  })
+  });
 });

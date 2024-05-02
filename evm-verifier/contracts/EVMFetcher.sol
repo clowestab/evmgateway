@@ -363,16 +363,11 @@ library EVMFetcher {
         assembly {
             mstore(constants, add(idx, 1)) // Increment constant array length
         }
-        console.log(idx);
         constants[idx] = value;
     }
 
     function _addOperation(EVMFetchRequest memory request, uint8 op) private view {
         uint256 commandIdx = request.commands.length - 1;
-        console.log("operation");
-        console.log(op);
-        console.log("-operation-");
-
         request.commands[commandIdx] = request.commands[commandIdx] | (bytes32(bytes1(op)) >> (8 * request.operationIdx++));
     }
 }
