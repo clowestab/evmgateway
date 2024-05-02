@@ -11,7 +11,6 @@ While this functionality is written primarily with read calls in mind, it also f
 library like Ethers, a transaction that includes relevant L2 proofs can be generated and signed.
 
 
-
 ## Usage
 
  1. Have your contract extend `EVMFetcher`.
@@ -60,6 +59,23 @@ contract TestL1 is EVMFetchTarget {
     }
 }
 ```
+
+### Multi Target
+Multi target support allows you to return data and proofs from mutiple targets.
+
+For example a user could query an address held in a static slot on Contract A and then utilise this as a second target (Contract B) from which they want to pull a value. The obvious use case for this in the context of ENS is getting a resolver address from a/the registry and then getting the resolved address from a slot on that resolver.
+
+The API methods made available for these use cases are: `iref`, `refSlice`, `setTarget`, `setTargetRef`, and `setTargetIref`.
+
+- `setTarget` allows you to manually set a new target
+- `setTargetRef` allows you to set the target to a previously fetched value. Pass the index of the value.
+- `setTargetIref` allows you to set the target to an internal value for example a slice of a previously fetched value. *Note*: Internal values are considered independently of **normal** values as they are the result of manipulation of provable values.
+
+### Slices
+
+- The `refSlice` method allows you to slice a portion of the previously returned value. Pass in an offset and length.
+- The `iref` method allows you to reference an internal value for utilisation in the slot ID generation process.
+
 
 ## Packages
 
