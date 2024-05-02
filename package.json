@@ -16,7 +16,7 @@
     "env": "env",
     "workspace": "bun ./scripts/workspace.ts",
     "build": "bun run workspace evm-gateway build && bun run workspace -evm-gateway build",
-    "test": "bun run workspace l1-verifier test",
+    "test": "bun run workspace l1-verifier run_both_test",
     "lint": "bun run workspace all lint",
     "prepare": "husky install"
   },
