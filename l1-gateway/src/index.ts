@@ -1,4 +1,4 @@
-import { EVMGateway } from '../../evm-gateway';
+import { EVMGateway } from '@ensdomains/evm-gateway';
 import { JsonRpcProvider } from 'ethers';
 import { L1ProofService, type L1ProvableBlock } from './L1ProofService.js';
 

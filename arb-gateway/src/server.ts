@@ -1,6 +1,6 @@
 import { Server } from '@chainlink/ccip-read-server';
 import { Command } from '@commander-js/extra-typings';
-import { EVMGateway } from '../../evm-gateway';
+import { EVMGateway } from '@ensdomains/evm-gateway';
 import { JsonRpcProvider } from 'ethers';
 import { ArbProofService } from './ArbProofService.js';
 import { InMemoryBlockCache } from './blockCache/InMemoryBlockCache.js';

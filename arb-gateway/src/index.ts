@@ -1,4 +1,4 @@
-import { EVMGateway } from '../../evm-gateway';
+import { EVMGateway } from '@ensdomains/evm-gateway';
 import { JsonRpcProvider } from 'ethers';
 import { ArbProofService, type ArbProvableBlock } from './ArbProofService.js';
 import { InMemoryBlockCache } from './blockCache/InMemoryBlockCache.js';
