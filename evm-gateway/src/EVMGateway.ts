@@ -340,7 +340,7 @@ export class EVMGateway<T extends ProvableBlock> {
       internalValues
     );
 
-    let target: null | string = null;
+    let target: string;
 
     if (tType == TOP_CONSTANT) {
       target = constants[tOperand];
