@@ -50,7 +50,7 @@ contract SlotExamples is EVMFetchTarget {
             .fetch(this.getNameCallback.selector, "");
     }
 
-    function getNameCallback(bytes[][] memory values, bytes memory) public view returns(string memory) {
+    function getNameCallback(bytes[][] memory values, bytes memory) public pure returns(string memory) {
         return string(values[0][0]);
     }
 
@@ -62,8 +62,7 @@ contract SlotExamples is EVMFetchTarget {
             .fetch(this.getNameTwiceCallback.selector, "");
     }
 
-    function getNameTwiceCallback(bytes[][] memory values, bytes memory) public view returns(string[] memory) {
-
+    function getNameTwiceCallback(bytes[][] memory values, bytes memory) public pure returns(string[] memory) {
         string[] memory strings = new string[](2);
         strings[0] = string(values[0][0]);
         strings[1] = string(values[0][1]);
@@ -96,7 +95,7 @@ contract SlotExamples is EVMFetchTarget {
             .fetch(this.getHighscorerFromRefSliceCallback.selector, "");
     }
 
-    function getHighscorerFromRefSliceCallback(bytes[][] memory values, bytes memory) public view returns(string memory) {
+    function getHighscorerFromRefSliceCallback(bytes[][] memory values, bytes memory) public pure returns(string memory) {
         string memory answer = string(values[0][1]);
         return string(values[0][1]);
     }
@@ -124,7 +123,7 @@ contract SlotExamples is EVMFetchTarget {
             .fetch(this.getStringBytesUsingAddressSlicedFromBytesCallback.selector, "");
     }
 
-    function getStringBytesUsingAddressSlicedFromBytesCallback(bytes[][] memory values, bytes memory) public view returns(bytes memory) {
+    function getStringBytesUsingAddressSlicedFromBytesCallback(bytes[][] memory values, bytes memory) public pure returns(bytes memory) {
         return values[0][1];
     }
 
@@ -138,7 +137,7 @@ contract SlotExamples is EVMFetchTarget {
             .fetch(this.getValueFromAddressFromRefCallback.selector, "");
     }
 
-    function getValueFromAddressFromRefCallback(bytes[][] memory values, bytes memory) public view returns(uint256) {
+    function getValueFromAddressFromRefCallback(bytes[][] memory values, bytes memory) public pure returns(uint256) {
         return abi.decode(values[1][0], (uint256));
     }
 

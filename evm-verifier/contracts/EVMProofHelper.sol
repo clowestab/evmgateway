@@ -72,7 +72,7 @@ library EVMProofHelper {
      * @param witness the StorageProof struct containing the necessary proof data
      * @return The retrieved storage proof value or 0x if the storage slot is empty
      */
-    function getSingleStorageProof(bytes32 storageRoot, uint256 slot, bytes[] memory witness) private view returns (bytes memory) {
+    function getSingleStorageProof(bytes32 storageRoot, uint256 slot, bytes[] memory witness) private pure returns (bytes memory) {
         
         (bool exists, bytes memory retrievedValue) = SecureMerkleTrie.get(
             abi.encodePacked(slot),
@@ -88,7 +88,7 @@ library EVMProofHelper {
         return RLPReader.readBytes(retrievedValue);
     }
 
-    function getFixedValue(bytes32 storageRoot, uint256 slot, bytes[] memory witness) private view returns(bytes32) {
+    function getFixedValue(bytes32 storageRoot, uint256 slot, bytes[] memory witness) private pure returns(bytes32) {
         bytes memory value = getSingleStorageProof(storageRoot, slot, witness);
         // RLP encoded storage slots are stored without leading 0 bytes.
         // Casting to bytes32 appends trailing 0 bytes, so we have to bit shift to get the 
@@ -103,7 +103,7 @@ library EVMProofHelper {
      * @param iValues an array of non-provable values used internally for slot generation e.g. slices of previous values
      * @return bytes the value/key to use in slot generation
      */
-    function executeOperation(bytes1 operation, bytes[] memory constants, bytes[] memory values, bytes[] memory iValues) private view returns(bytes memory) {
+    function executeOperation(bytes1 operation, bytes[] memory constants, bytes[] memory values, bytes[] memory iValues) private pure returns(bytes memory) {
         uint8 opcode = uint8(operation) & 0xe0;
         uint8 operand = uint8(operation) & 0x1f;
 
@@ -118,7 +118,7 @@ library EVMProofHelper {
         }
     }
 
-    function computeFirstSlot(bytes32 command, bytes[] memory constants, bytes[] memory values, bytes[] memory iValues) private view returns(SlotData memory sData, uint8 postProcessIndex) {
+    function computeFirstSlot(bytes32 command, bytes[] memory constants, bytes[] memory values, bytes[] memory iValues) private pure returns(SlotData memory sData, uint8 postProcessIndex) {
         uint8 flags = uint8(command[1]);
         sData.isDynamic = (flags & FLAG_DYNAMIC) != 0;
 
@@ -142,7 +142,7 @@ library EVMProofHelper {
         }
     }
 
-    function getDynamicValue(bytes32 storageRoot, uint256 slot, StateProof memory proof, uint256 proofIdx) private view returns(bytes memory value, uint256 newProofIdx) {
+    function getDynamicValue(bytes32 storageRoot, uint256 slot, StateProof memory proof, uint256 proofIdx) private pure returns(bytes memory value, uint256 newProofIdx) {
         
         bytes32 fValue = getFixedValue(storageRoot, slot, proof.storageProofs[proofIdx++]);
 
@@ -183,12 +183,11 @@ library EVMProofHelper {
      * @return iValues a bytes array of internal values
      * @return nextCIdx index of the command to proceed from for the next target
      */
-    function getStorageValues(address target, bytes32[] memory commands, uint8 cIdx, bytes[] memory constants, bytes32 stateRoot, StateProof memory proof) internal view returns(bytes[] memory values, bytes[] memory iValues, uint8 nextCIdx) {
+    function getStorageValues(address target, bytes32[] memory commands, uint8 cIdx, bytes[] memory constants, bytes32 stateRoot, StateProof memory proof) internal pure returns(bytes[] memory values, bytes[] memory iValues, uint8 nextCIdx) {
        
         bytes32 storageRoot = getStorageRoot(stateRoot, target, proof.stateTrieWitness);
         uint256 proofIdx = 0;
 
-        //TOMNOTE we have to reinit this otherwise somewhere along the lines it uses the same memory as the previous call?
         values = new bytes[](0);
         iValues = new bytes[](0);
 
@@ -228,7 +227,7 @@ library EVMProofHelper {
      * @param proofIdx proof index
      * @return bytes[]
      */
-    function getValueFromPath(bytes32 storageRoot, bytes32 thisCommand, bytes[] memory constants, bytes[] memory values, bytes[] memory iValues, StateProof memory proof, uint256 proofIdx) internal view returns(bytes[] memory) {
+    function getValueFromPath(bytes32 storageRoot, bytes32 thisCommand, bytes[] memory constants, bytes[] memory values, bytes[] memory iValues, StateProof memory proof, uint256 proofIdx) internal pure returns(bytes[] memory) {
 
         uint256 vIndex = values.length;
 
@@ -269,7 +268,7 @@ library EVMProofHelper {
      * @param iValues values discerned from slicing and manipulating previously discerned values
      * @param postProcessIndex the index of the postProcessing separator (0xfe)
      */
-    function postProcessValue(bytes32 command, bytes[] memory constants, bytes memory value, bytes[] memory iValues, uint8 postProcessIndex) internal view {
+    function postProcessValue(bytes32 command, bytes[] memory constants, bytes memory value, bytes[] memory iValues, uint8 postProcessIndex) internal pure {
 
         for (uint256 k = postProcessIndex + 1; k < 32; k++) {
 
